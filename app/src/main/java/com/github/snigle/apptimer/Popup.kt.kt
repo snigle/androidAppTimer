@@ -1,5 +1,8 @@
 package com.github.snigle.apptimer
 
+import android.app.usage.UsageStats
+import android.app.usage.UsageStatsManager
+import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Button
@@ -98,27 +101,85 @@ class Popup: ExpandableBubbleService() {
         Log.d("test", "restart service")
         enableBubbleDragging(false)
 
-        Timer().scheduleAtFixedRate(CustomTimerTask(this),0,5000)
+        Timer().scheduleAtFixedRate(CustomTimerTask(this),0,1000)
 
     }
 
-    /*private val timerTask: TimerTask = object : TimerTask(private service ::Popup) {
+    private val timerTask: TimerTask = object : TimerTask() {
         override fun run() {
-            Log.d("test", "timerrrrr")
-            minimize()
+            Log.d("test", "timerrrrr : ")
+            //GlobalScope.launch(Dispatchers.Main) {
+            //            popup.minimize()
+            //        }
             //expand()
+
         }
-    }*/
+    }
+
+
 
     }
+
+class StartedApp(val packageName: String, duration : Long, startedAt: Long) {
+    // StartTimer
+
+    // HaveTimer
+}
 
 class CustomTimerTask(private val popup: Popup) : TimerTask() {
+
+    private val apps = mutableMapOf<String,StartedApp>()
+
     override fun run() {
-        Log.d("YourService", "TimerTask is running")
+        val lastApp = this.getLastStartedApp(popup)
+        if (!apps.containsKey(lastApp.packageName)) {
+            Log.d("YourService", "TimerTask is running: " + lastApp.packageName)
+            apps[lastApp.packageName] = lastApp
+        }
         GlobalScope.launch(Dispatchers.Main) {
-            popup.minimize()
+            //popup.minimize()
         }
         // Here, you can use the context to perform any operations
         // that require the context within the TimerTask
+    }
+
+    private fun getForegroundApp(context: Context): String {
+        val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val currentTime = System.currentTimeMillis()
+
+        val stats = usageStatsManager.queryUsageStats(
+            UsageStatsManager.INTERVAL_DAILY,
+            currentTime - 1000 * 10,  // Check for last 10 seconds
+            currentTime
+        )
+
+        stats?.let {
+            if (it.isNotEmpty()) {
+                return it[0].packageName
+            }
+        }
+
+        return "" // No foreground app found
+    }
+
+    fun getLastStartedApp(context: Context): StartedApp {
+        val currentTimestamp = System.currentTimeMillis()
+        val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+
+        // Set the time window for querying usage statistics
+        val oneHourAgo = currentTimestamp - (60 * 1000) // 1m ago
+        val appList: Map<String, UsageStats> = usageStatsManager.queryAndAggregateUsageStats(oneHourAgo, currentTimestamp)
+
+        var lastUsedApp = ""
+        var lastTimeStamp = 0L
+
+        for ((packageName, usageStats) in appList) {
+            if (usageStats.lastTimeUsed > lastTimeStamp) {
+                lastTimeStamp = usageStats.lastTimeUsed
+                lastUsedApp = packageName
+            }
+        }
+
+        return StartedApp(lastUsedApp, 0, lastTimeStamp)
     }
 }

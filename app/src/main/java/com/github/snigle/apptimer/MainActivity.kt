@@ -3,7 +3,9 @@ package com.github.snigle.apptimer
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,6 +25,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
 
+        if (!this.checkPermissions()) {
+            return
+        }
 
         val intent = Intent(this, Popup::class.java)
         ContextCompat.startForegroundService(this, intent)
@@ -44,33 +49,38 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private val USAGE_STATS_PERMISSION_REQUEST = 101
 
-    fun checkUsageStatsPermission() {
+    override fun onResume() {
+        super.onResume()
+        if (!this.checkPermissions()) {
+            return
+        }
+
+    }
+
+    fun checkPermissions(): Boolean {
+        if (!Settings.canDrawOverlays(this)) {
+            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+            intent.data = Uri.parse("package:$packageName")
+            startActivity(intent)
+            return false
+        }
+
         val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
         val mode = appOps.unsafeCheckOpNoThrow(
             AppOpsManager.OPSTR_GET_USAGE_STATS,
             android.os.Process.myUid(),
             packageName
         )
-
         if (mode != AppOpsManager.MODE_ALLOWED) {
             val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
-            startActivityForResult(intent, USAGE_STATS_PERMISSION_REQUEST)
-        } else {
-            // Permission already granted
-            // Your logic to fetch foreground app
+            startActivity(intent)
+            return false
         }
+
+        return true
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == USAGE_STATS_PERMISSION_REQUEST) {
-            // Check if permission is granted
-            checkUsageStatsPermission()
-        } else {
-            super.onActivityResult(requestCode, resultCode, data)
-        }
-    }
 
 
 }
