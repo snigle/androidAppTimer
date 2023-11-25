@@ -5,7 +5,6 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import androidx.core.content.ContentProviderCompat.requireContext
 import com.torrydo.floatingbubbleview.FloatingBubbleListener
 import com.torrydo.floatingbubbleview.service.expandable.BubbleBuilder
 import com.torrydo.floatingbubbleview.service.expandable.ExpandableBubbleService
@@ -13,6 +12,7 @@ import com.torrydo.floatingbubbleview.service.expandable.ExpandedBubbleBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.util.Timer
 import java.util.TimerTask
 
@@ -33,13 +33,23 @@ class Popup : ExpandableBubbleService() {
             .bubbleCompose {
                 PopupCompose(
                     app = this.currentAppInPopup,
-                    setTimer = { app: StartedApp -> this.setTimer(app)},
-                    settingsIntent = {app : StartedApp ->
+                    setTimer = { app: StartedApp -> this.setTimer(app) },
+                    close = { app: StartedApp ->
+                        GlobalScope.launch(Dispatchers.Main) {
+                            val intent = Intent(Intent.ACTION_MAIN)
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            intent.addCategory(Intent.CATEGORY_HOME)
+                            startActivity(intent)
+                            removeAll()
+                        }
+                        apps.remove(app.packageName)
+                    },
+                    settingsIntent = { app: StartedApp ->
 
                         GlobalScope.launch(Dispatchers.Main) {
                             removeAll()
                             val intent = Intent(applicationContext, MainActivity::class.java)
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK;
+                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
                             startActivity(intent)
                         }
 
@@ -96,8 +106,8 @@ class Popup : ExpandableBubbleService() {
 
 
         return ExpandedBubbleBuilder(this).expandedCompose {
-                Greeting("tata")
-            }
+            Greeting("tata")
+        }
             // handle key code
 
             .style(null)
@@ -128,19 +138,23 @@ class Popup : ExpandableBubbleService() {
         if (lastApp.packageName == "com.github.snigle.apptimer" || lastApp.packageName.contains("launcher")) {
             return
         }
-        if (!apps.containsKey(lastApp.packageName)) {
+
+        val app = apps[lastApp.packageName]
+        if (app == null) {
             Log.d("YourService", "detected app ${lastApp.packageName}")
             apps[lastApp.packageName] = lastApp
             this.askTimer(lastApp)
+        } else if (app.expired()) {
+            this.askTimer(app)
         }
     }
 
     private fun askTimer(app: StartedApp) {
         this.currentAppInPopup = app
         //this.minimize()
-        var popup : Popup = this
+        var popup: Popup = this
         GlobalScope.launch(Dispatchers.Main) {
-        popup.minimize()
+            popup.minimize()
         }
     }
 
@@ -151,10 +165,13 @@ class Popup : ExpandableBubbleService() {
 
 }
 
-class StartedApp(val packageName: String, duration: Long, startedAt: Long) {
+class StartedApp(val packageName: String, val duration: Long, val startedAt: Long) {
     // StartTimer
 
     // HaveTimer
+    fun expired(): Boolean {
+        return duration > 0 && (Instant.now().epochSecond - duration > startedAt)
+    }
 }
 
 class CustomTimerTask(private val popup: Popup, private val callback: (app: StartedApp) -> Unit) :

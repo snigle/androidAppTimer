@@ -22,6 +22,7 @@ fun PopupCompose(
     app: StartedApp,
     setTimer: (app: StartedApp)->Unit,
     settingsIntent: (app: StartedApp)->Unit,
+    close: (app: StartedApp)->Unit,
     ) {
     return Surface(
         modifier = Modifier.width(200.dp),
@@ -36,6 +37,14 @@ fun PopupCompose(
 
                 Text(text = "Add timer for ${app.packageName}")
 
+                if (app.expired()) {
+                    Button(onClick = { close(app) }) {
+                        Text(text = "Close")
+                    }
+                }
+                Button(onClick = { setTimer(StartedApp(app.packageName, 10, Instant.now().epochSecond))}) {
+                    Text(text = "10 seconds")
+                }
                 Button(onClick = { setTimer(StartedApp(app.packageName, 5 * 60, Instant.now().epochSecond))}) {
                     Text(text = "5 Minutes")
                 }
@@ -50,5 +59,11 @@ fun PopupCompose(
 @Composable
 @Preview
 fun PopupComposePreview() {
-return PopupCompose(app = StartedApp("test", 0,0), setTimer = { _ -> }, settingsIntent = {_ ->})
+return PopupCompose(app = StartedApp("test", 0,0), setTimer = { _ -> }, settingsIntent = {_ ->}, close = {})
+}
+
+@Composable
+@Preview
+fun PopupComposeExpiredPreview() {
+    return PopupCompose(app = StartedApp("test", 10,0), setTimer = { _ -> }, settingsIntent = {_ ->}, close = {})
 }
