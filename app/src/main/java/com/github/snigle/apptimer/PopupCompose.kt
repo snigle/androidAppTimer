@@ -14,22 +14,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import java.time.Instant
 
 @Composable
 fun PopupCompose(
     modifier: Modifier = Modifier,
     app: StartedApp,
-    setTimer: (app: StartedApp)->Unit,
-    settingsIntent: (app: StartedApp)->Unit,
-    close: (app: StartedApp)->Unit,
-    ) {
+    setTimer: (app: StartedApp, duration: Long) -> Unit,
+    settingsIntent: (app: StartedApp) -> Unit,
+    close: (app: StartedApp) -> Unit,
+) {
     return Surface(
         modifier = Modifier.width(200.dp),
         color = MaterialTheme.colorScheme.background
     ) {
-        Row(  modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
 
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -37,19 +38,23 @@ fun PopupCompose(
 
                 Text(text = "Add timer for ${app.packageName}")
 
-                if (app.expired()) {
+                if (app.timedOut()) {
                     Button(onClick = { close(app) }) {
                         Text(text = "Close")
                     }
                 }
-                Button(onClick = { setTimer(StartedApp(app.packageName, 10, Instant.now().epochSecond))}) {
+                Button(onClick = { setTimer(app, 10) }) {
                     Text(text = "10 seconds")
                 }
-                Button(onClick = { setTimer(StartedApp(app.packageName, 5 * 60, Instant.now().epochSecond))}) {
+                Button(onClick = { setTimer(app, 10 * 60) }) {
                     Text(text = "5 Minutes")
                 }
-                Button(onClick = { settingsIntent(app) }) {
-                    Text(text = "Settings")
+
+                if (!app.timedOut()) {
+
+                    Button(onClick = { settingsIntent(app) }) {
+                        Text(text = "Settings")
+                    }
                 }
             }
         }
@@ -59,11 +64,19 @@ fun PopupCompose(
 @Composable
 @Preview
 fun PopupComposePreview() {
-return PopupCompose(app = StartedApp("test", 0,0), setTimer = { _ -> }, settingsIntent = {_ ->}, close = {})
+    return PopupCompose(
+        app = StartedApp("test"),
+        setTimer = { _, _ -> },
+        settingsIntent = { _ -> },
+        close = {})
 }
 
 @Composable
 @Preview
 fun PopupComposeExpiredPreview() {
-    return PopupCompose(app = StartedApp("test", 10,0), setTimer = { _ -> }, settingsIntent = {_ ->}, close = {})
+    return PopupCompose(
+        app = StartedApp("test"),
+        setTimer = { _, _ -> },
+        settingsIntent = { _ -> },
+        close = {})
 }

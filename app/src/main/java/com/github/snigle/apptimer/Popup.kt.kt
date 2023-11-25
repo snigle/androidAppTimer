@@ -16,9 +16,13 @@ import java.time.Instant
 import java.util.Timer
 import java.util.TimerTask
 
+val LogService = "apptimer.popup"
+
 class Popup : ExpandableBubbleService() {
 
-    private var currentAppInPopup: StartedApp = StartedApp("empty", 0, 0)
+    private var currentAppInPopup: StartedApp = StartedApp()
+    private var previoustRunningApp: StartedApp = StartedApp()
+
     private val apps = mutableMapOf<String, StartedApp>()
 
 
@@ -33,27 +37,30 @@ class Popup : ExpandableBubbleService() {
             .bubbleCompose {
                 PopupCompose(
                     app = this.currentAppInPopup,
-                    setTimer = { app: StartedApp -> this.setTimer(app) },
+                    setTimer = { app: StartedApp, duration: Long ->
+                        app.startTimer(duration)
+                        closePopup()
+                    },
                     close = { app: StartedApp ->
-                        GlobalScope.launch(Dispatchers.Main) {
-                            val intent = Intent(Intent.ACTION_MAIN)
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            intent.addCategory(Intent.CATEGORY_HOME)
-                            startActivity(intent)
-                            removeAll()
-                        }
-                        apps.remove(app.packageName)
+                        // Start android launcher
+                        val intent = Intent(Intent.ACTION_MAIN)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        intent.addCategory(Intent.CATEGORY_HOME)
+                        startActivity(intent)
+                        // close popup and reset timer
+                        app.reset()
+                        closePopup()
+
                     },
                     settingsIntent = { app: StartedApp ->
 
-                        GlobalScope.launch(Dispatchers.Main) {
-                            removeAll()
-                            val intent = Intent(applicationContext, MainActivity::class.java)
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                            startActivity(intent)
-                        }
+                        // Start settings intent
+                        val intent = Intent(applicationContext, MainActivity::class.java)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        startActivity(intent)
 
-                        apps.remove(app.packageName)
+                        app.reset()
+                        closePopup()
                     })
 
             }
@@ -128,69 +135,134 @@ class Popup : ExpandableBubbleService() {
         Timer().scheduleAtFixedRate(
             CustomTimerTask(
                 this,
-                callback = { app: StartedApp -> this.detectApp(app) }), 0, 1000
+                callback = { packageName: String -> this.detectRunningApp(packageName) }), 0, 1000
         )
 
     }
 
-    private fun detectApp(lastApp: StartedApp): Unit {
-        // check if app is watached in user settings
-        if (lastApp.packageName == "com.github.snigle.apptimer" || lastApp.packageName.contains("launcher")) {
+    // Start 10h00 , timer 5m
+    // Pause 10h01 , ...
+    // Start 10h15 , timer 4m
+    private fun detectRunningApp(packageName: String): Unit {
+        // Do nothing if popup is open
+        if (currentAppInPopup.packageName != "") {
             return
         }
 
-        val app = apps[lastApp.packageName]
+        var app = apps[packageName]
         if (app == null) {
-            Log.d("YourService", "detected app ${lastApp.packageName}")
-            apps[lastApp.packageName] = lastApp
-            this.askTimer(lastApp)
+            Log.d(LogService, "detected new app ${packageName}")
+            app = StartedApp(packageName)
+            apps[packageName] = app
+        }
+
+        // Detect Pause
+        if (previoustRunningApp.packageName != app.packageName) {
+            if (previoustRunningApp.haveTimer()) {
+                Log.d(LogService, "detect app pause ${previoustRunningApp.packageName}")
+                previoustRunningApp.pause()
+            }
+            if (app.haveTimer()) {
+                Log.d(LogService, "detect app resume ${app.packageName}")
+                app.resume()
+            }
+        }
+        previoustRunningApp = app
+
+        // check if app is watached in user settings
+        if (packageName == "com.github.snigle.apptimer" || packageName.contains("launcher")) {
+            return
+        }
+
+        // Detect start
+        if (!app.haveTimer()) {
+            Log.d(LogService, "start new timer ${app.packageName}")
+            this.openPopup(app)
+            // Detect expiration
         } else if (app.expired()) {
-            this.askTimer(app)
+            Log.d(LogService, "detected expired app ${app.packageName}")
+            // Remove timer
+            app.reset()
+            this.openPopup(app)
+            // Detect timed out
+        } else if (app.timedOut()) {
+            Log.d(LogService, "detected timed out app ${app.packageName}")
+            this.openPopup(app)
         }
     }
 
-    private fun askTimer(app: StartedApp) {
+    private fun openPopup(app: StartedApp) {
         this.currentAppInPopup = app
-        //this.minimize()
         var popup: Popup = this
         GlobalScope.launch(Dispatchers.Main) {
             popup.minimize()
         }
     }
 
-    private fun setTimer(app: StartedApp) {
-        apps[app.packageName] = app
-        this.removeAll()
+    private fun closePopup() {
+        removeAll()
+        this.currentAppInPopup = StartedApp()
     }
-
 }
 
-class StartedApp(val packageName: String, val duration: Long, val startedAt: Long) {
-    // StartTimer
+class StartedApp(val packageName: String = "") {
 
-    // HaveTimer
-    fun expired(): Boolean {
+    private val cleanExpiredDuration = 5 * 60 // 4 minutes
+    private var pause = false
+    private var duration: Long = 0L
+    private var startedAt: Long = 0L
+
+    fun startTimer(duration: Long): Unit {
+        this.duration = duration
+        this.startedAt = Instant.now().epochSecond
+    }
+
+    fun haveTimer(): Boolean {
+        return this.duration > 0L && this.startedAt > 0L
+    }
+
+    fun timedOut(): Boolean {
         return duration > 0 && (Instant.now().epochSecond - duration > startedAt)
     }
+
+    fun expired(): Boolean {
+        return duration > 0 && (Instant.now().epochSecond - duration - cleanExpiredDuration > startedAt)
+    }
+
+    fun pause(): Unit {
+        pause = true
+        this.duration = Instant.now().epochSecond - this.startedAt
+    }
+
+    fun resume(): Unit {
+        pause = false
+        this.startedAt = Instant.now().epochSecond
+    }
+
+    fun reset(): Unit {
+        this.pause = false
+        this.startedAt = 0L
+        this.duration = 0L
+    }
 }
 
-class CustomTimerTask(private val popup: Popup, private val callback: (app: StartedApp) -> Unit) :
+class CustomTimerTask(
+    private val popup: Popup,
+    private val callback: (packageName: String) -> Unit
+) :
     TimerTask() {
 
     private val apps = mutableMapOf<String, StartedApp>()
 
     override fun run() {
-        this.callback(this.getLastStartedApp(popup))
-
-        //GlobalScope.launch(Dispatchers.Main) {
-        //popup.minimize()
-        //}
-        // Here, you can use the context to perform any operations
-        // that require the context within the TimerTask
+        val packageName = this.getLastStartedApp(popup)
+        if (packageName != "") {
+            this.callback(packageName)
+        }
     }
 
 
-    fun getLastStartedApp(context: Context): StartedApp {
+    fun getLastStartedApp(context: Context): String {
         val currentTimestamp = System.currentTimeMillis()
         val usageStatsManager =
             context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -210,6 +282,6 @@ class CustomTimerTask(private val popup: Popup, private val callback: (app: Star
             }
         }
 
-        return StartedApp(lastUsedApp, 0, lastTimeStamp)
+        return lastUsedApp
     }
 }
