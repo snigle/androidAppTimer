@@ -51,12 +51,9 @@ class MainActivity : ComponentActivity() {
         // Get a list of all installed packages
         val packageManager: PackageManager = packageManager
 
-        // Create an Intent to filter only launchable apps
-        val launcherIntent = Intent(Intent.ACTION_MAIN, null)
-        launcherIntent.addCategory(Intent.CATEGORY_LAUNCHER)
 
         // Retrieve a list of apps that can be launched
-        val appsList = packageManager.queryIntentActivities(launcherIntent, 0)
+        val appsList = Preference.getApplist(packageManager)
         // Filter and process the list of launchable apps
         viewModel.load(appsList.map { it.activityInfo.name })
 

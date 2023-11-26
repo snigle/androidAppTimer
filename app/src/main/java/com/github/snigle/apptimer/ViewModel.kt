@@ -11,8 +11,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.asStateFlow
 
-class MyViewModel(application: Application) : AndroidViewModel(application) {
-    private val preferences = PreferenceManager.getDefaultSharedPreferences(application)
+class MyViewModel(preferences: Preference, application: Application) : AndroidViewModel(application) {
+    private val preferences = Preference(PreferenceManager.getDefaultSharedPreferences(application))
 
     private val _mapApplication : MutableStateFlow<Map<String,Boolean>> = MutableStateFlow(emptyMap())
 
@@ -22,11 +22,8 @@ class MyViewModel(application: Application) : AndroidViewModel(application) {
         return "app_time_application_$appName"
     }
     fun load(appList: List<String>): Unit{
-        val result : MutableMap<String,Boolean> = mutableMapOf()
-         appList.forEach { name: String ->
-             result[name] = preferences.getBoolean(preferenceKey(name), false)
-         }
-        _mapApplication.value = result
+
+        _mapApplication.value = Preference.load(appList).toMutableMap()
     }
     init {
         // Load user data from SharedPreferences when ViewModel is created
