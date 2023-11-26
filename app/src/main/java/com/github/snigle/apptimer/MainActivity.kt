@@ -14,24 +14,19 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmapOrNull
 import com.github.snigle.apptimer.ui.theme.AppTimerTheme
@@ -53,17 +48,14 @@ class MainActivity : ComponentActivity() {
 
 
         // Retrieve a list of apps that can be launched
-        val appsList = Preference.getApplist(packageManager)
-        // Filter and process the list of launchable apps
-        viewModel.load(appsList.map { it.activityInfo.name })
+        val appsList = Preference.getAppInfoList(packageManager)
+        viewModel.init(Preference.getAppList(appList = appsList))
 
+        // Start background service
         val intent = Intent(this, Popup::class.java)
         ContextCompat.startForegroundService(this, intent)
 
 
-        /*WorkManager
-            .getInstance(this)
-            .enqueue(uploadWorkRequest)*/
         setContent {
             AppTimerTheme {
                 // A surface container using the 'background' color from the theme
@@ -74,14 +66,9 @@ class MainActivity : ComponentActivity() {
                 ) {
                     ApplicationList(
                         applications = appsList.map { appInfo ->
-                            var name = "NoName"
-                            try {
-                                name = appInfo.loadLabel(packageManager).toString()
-                            } catch (e: Exception) {}
                             Application(
-                                iconPackage = appInfo.activityInfo.packageName,
-                                label = name,
-                                packageName = appInfo.activityInfo.name
+                                label = appInfo.loadLabel(packageManager).toString(),
+                                packageName = appInfo.activityInfo.packageName
                             )
                         },
                         viewModel = viewModel,
@@ -127,30 +114,7 @@ class MainActivity : ComponentActivity() {
 
 }
 
-//@OptIn(ExperimentalMaterial3Api::class)
-//@Composable
-//fun MyUI(viewModel: MyViewModel) {
-//    val userData: String by viewModel.mapApplication.observeAsState("")
-//
-//    Column(
-//        modifier = Modifier
-//            .fillMaxSize()
-//            .padding(16.dp)
-//    ) {
-//        // Composable components using userData state
-//        Text(text = "User Data: $userData")
-//
-//        // Input field to update user data
-//        TextField(
-//            value = userData,
-//            onValueChange = { newValue: String ->
-//                viewModel.saveUserData(newValue)
-//            }
-//        )
-//    }
-//}
-
-class Application(val label: String,val packageName: String, val iconPackage: String)
+class Application(val label: String,val packageName: String)
 
 @Composable
 fun ApplicationList(
@@ -161,7 +125,7 @@ fun ApplicationList(
     LazyColumn {
 
         items(applications) { application ->
-            val appIcon = packageManager.getApplicationIcon(application.iconPackage)
+            val appIcon = packageManager.getApplicationIcon(application.packageName)
             val checked : Boolean? by viewModel.getValueByKey(application.packageName).collectAsState(null)
             Application(
                 applicationName = application.label,

@@ -4,7 +4,9 @@ import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.util.Log
+import androidx.preference.PreferenceManager
 import com.torrydo.floatingbubbleview.FloatingBubbleListener
 import com.torrydo.floatingbubbleview.service.expandable.BubbleBuilder
 import com.torrydo.floatingbubbleview.service.expandable.ExpandableBubbleService
@@ -19,6 +21,7 @@ import java.util.TimerTask
 val LogService = "apptimer.popup"
 
 class Popup : ExpandableBubbleService() {
+    private lateinit var preferences : Preference
 
     private var currentAppInPopup: StartedApp = StartedApp()
     private var previoustRunningApp: StartedApp = StartedApp()
@@ -129,6 +132,7 @@ class Popup : ExpandableBubbleService() {
 
     override fun onCreate() {
         super.onCreate()
+        preferences = Preference(PreferenceManager.getDefaultSharedPreferences(applicationContext))
         Log.d("test", "restart service")
         enableBubbleDragging(false)
 
@@ -158,37 +162,40 @@ class Popup : ExpandableBubbleService() {
 
         // Detect Pause
         if (previoustRunningApp.packageName != app.packageName) {
+
             if (previoustRunningApp.haveTimer()) {
                 Log.d(LogService, "detect app pause ${previoustRunningApp.packageName}")
                 previoustRunningApp.pause()
             }
+
             if (app.haveTimer()) {
                 Log.d(LogService, "detect app resume ${app.packageName}")
                 app.resume()
             }
+
+            if (!app.haveTimer() && preferences.get(app.packageName)) {
+                Log.d(LogService, "start new timer ${app.packageName}")
+                this.openPopup(app)
+            }
+
         }
+
+        if (app.haveTimer()) {
+
+            if (app.expired()) {
+                Log.d(LogService, "detected expired app ${app.packageName}")
+                // Remove timer
+                app.reset()
+                this.openPopup(app)
+                // Detect timed out
+            } else if (app.timedOut()) {
+                Log.d(LogService, "detected timed out app ${app.packageName}")
+                this.openPopup(app)
+            }
+
+        }
+
         previoustRunningApp = app
-
-        // check if app is watached in user settings
-        if (packageName == "com.github.snigle.apptimer" || packageName.contains("launcher")) {
-            return
-        }
-
-        // Detect start
-        if (!app.haveTimer()) {
-            Log.d(LogService, "start new timer ${app.packageName}")
-            this.openPopup(app)
-            // Detect expiration
-        } else if (app.expired()) {
-            Log.d(LogService, "detected expired app ${app.packageName}")
-            // Remove timer
-            app.reset()
-            this.openPopup(app)
-            // Detect timed out
-        } else if (app.timedOut()) {
-            Log.d(LogService, "detected timed out app ${app.packageName}")
-            this.openPopup(app)
-        }
     }
 
     private fun openPopup(app: StartedApp) {
