@@ -7,28 +7,35 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmapOrNull
 import com.github.snigle.apptimer.ui.theme.AppTimerTheme
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.livedata.observeAsState
+
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MyViewModel by viewModels()
@@ -50,14 +57,7 @@ class MainActivity : ComponentActivity() {
 
         // Retrieve a list of apps that can be launched
         val appsList = packageManager.queryIntentActivities(launcherIntent, 0)
-
         // Filter and process the list of launchable apps
-        for (appInfo in appsList) {
-            val appName = appInfo.activityInfo.packageName
-            // Process each appName as needed
-            android.util.Log.d("mainActivity", "Installed Package: $appName")
-        }
-
 
 
         val intent = Intent(this, Popup::class.java)
@@ -72,11 +72,27 @@ class MainActivity : ComponentActivity() {
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .width(12.dp),
+                        .fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MyUI(viewModel = viewModel)
+                    LazyColumn {
+
+                        //MyUI(viewModel = viewModel)
+                        items(appsList) { appInfo ->
+                            val appName = appInfo.activityInfo.packageName
+                            val appIcon = appInfo.loadIcon(packageManager)
+                            // Process each appName as needed
+                            android.util.Log.d("mainActivity", "Installed Package: $appName")
+                            Application(
+                                applicationName = appInfo.activityInfo.name,
+                                packageName = appName,
+                                appIcon = appIcon?.toBitmapOrNull()?.asImageBitmap(),
+                                checked = true,
+                                onToggle = { /*TODO*/ })
+
+
+                        }
+                    }
                 }
             }
         }
@@ -115,13 +131,12 @@ class MainActivity : ComponentActivity() {
     }
 
 
-
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MyUI(viewModel: MyViewModel) {
-    val userData : String by viewModel.userData.observeAsState("")
+    val userData: String by viewModel.userData.observeAsState("")
 
     Column(
         modifier = Modifier
@@ -138,6 +153,59 @@ fun MyUI(viewModel: MyViewModel) {
                 viewModel.saveUserData(newValue)
             }
         )
+    }
+}
+
+@Composable
+fun Application(
+    applicationName: String,
+    packageName: String,
+    appIcon: ImageBitmap?,
+    checked: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(Modifier.wrapContentHeight()) {
+        Column {
+            if (appIcon != null) {
+                Image(appIcon, contentDescription = "icon")
+            }
+        }
+        Column(Modifier.weight(1F)) {
+            Text(text = applicationName)
+            Text(text = packageName)
+        }
+        Column {
+            Switch(checked = checked, onCheckedChange = { _ -> onToggle() })
+        }
+    }
+
+}
+
+@Composable
+@Preview
+fun ApplicationPreview() {
+    return Surface(
+        modifier = Modifier
+            .fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
+    ) {
+        Column {
+
+            Application(
+                applicationName = "Chrome",
+                packageName = "google.chrome",
+                null,
+                checked = true,
+                onToggle = { })
+            Application(
+                applicationName = "Chrome",
+                packageName = "google.chrome",
+                null,
+                checked = true,
+                onToggle = { })
+        }
+
     }
 }
 
