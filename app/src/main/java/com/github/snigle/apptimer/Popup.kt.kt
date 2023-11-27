@@ -4,7 +4,7 @@ import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
+import android.content.pm.PackageManager
 import android.util.Log
 import androidx.preference.PreferenceManager
 import com.torrydo.floatingbubbleview.FloatingBubbleListener
@@ -21,9 +21,11 @@ import java.util.TimerTask
 val LogService = "apptimer.popup"
 
 class Popup : ExpandableBubbleService() {
+    private var popupLabel: String = ""
     private lateinit var preferences : Preference
+    private lateinit var packageManager: PackageManager
 
-    private var currentAppInPopup: StartedApp = StartedApp()
+    private var popupApp: StartedApp = StartedApp()
     private var previoustRunningApp: StartedApp = StartedApp()
 
     private val apps = mutableMapOf<String, StartedApp>()
@@ -39,7 +41,8 @@ class Popup : ExpandableBubbleService() {
             // or our sweetie, Jetpack Compose
             .bubbleCompose {
                 PopupCompose(
-                    app = this.currentAppInPopup,
+                    app = this.popupApp,
+                    appLabel = this.popupLabel,
                     setTimer = { app: StartedApp, duration: Long ->
                         app.startTimer(duration)
                         closePopup()
@@ -72,8 +75,8 @@ class Popup : ExpandableBubbleService() {
             .bubbleStyle(null)
 
             // set start location for the bubble, (x=0, y=0) is the top-left
-            .startLocation(100, 100)    // in dp
-            .startLocationPx(100, 100)  // in px
+            .startLocation(0, 0)    // in dp
+            .startLocationPx(0, 0)  // in px
 
 
             // enable auto animate bubble to the left/right side when release, true by default
@@ -90,7 +93,9 @@ class Popup : ExpandableBubbleService() {
             //.closeBehavior(CloseBubbleBehavior.DYNAMIC_CLOSE_BUBBLE)
 
             // the more value (dp), the larger closeable-area
-            .distanceToClose(100)
+            .distanceToClose(0)
+
+            .bubbleDraggable(false)
 
             // enable bottom background, false by default
             //.bottomBackground(true)
@@ -133,8 +138,8 @@ class Popup : ExpandableBubbleService() {
     override fun onCreate() {
         super.onCreate()
         preferences = Preference(PreferenceManager.getDefaultSharedPreferences(applicationContext))
+        packageManager = applicationContext.packageManager
         Log.d("test", "restart service")
-        enableBubbleDragging(false)
 
         Timer().scheduleAtFixedRate(
             CustomTimerTask(
@@ -149,7 +154,7 @@ class Popup : ExpandableBubbleService() {
     // Start 10h15 , timer 4m
     private fun detectRunningApp(packageName: String): Unit {
         // Do nothing if popup is open
-        if (currentAppInPopup.packageName != "") {
+        if (popupApp.packageName != "") {
             return
         }
 
@@ -199,18 +204,23 @@ class Popup : ExpandableBubbleService() {
     }
 
     private fun openPopup(app: StartedApp) {
-        this.currentAppInPopup = app
+        this.popupApp = app
+
         var popup: Popup = this
         GlobalScope.launch(Dispatchers.Main) {
+            val appInfo = packageManager.getApplicationInfo(app.packageName, PackageManager.GET_META_DATA)
+            popup.popupLabel =  packageManager.getApplicationLabel(appInfo).toString()
+
             popup.minimize()
         }
     }
 
     private fun closePopup() {
         removeAll()
-        this.currentAppInPopup = StartedApp()
+        this.popupApp = StartedApp("")
     }
 }
+
 
 class StartedApp(val packageName: String = "") {
 
@@ -233,6 +243,8 @@ class StartedApp(val packageName: String = "") {
     }
 
     fun expired(): Boolean {
+        // TODO: expiration is not well defined. Maybe I should expire if the duration from the timer creation is higher than the defined timer.
+        // (don't use startedAt which is changed at resume, need keep createdAt in different variable.
         return duration > 0 && (Instant.now().epochSecond - duration - cleanExpiredDuration > startedAt)
     }
 
@@ -250,6 +262,18 @@ class StartedApp(val packageName: String = "") {
         this.pause = false
         this.startedAt = 0L
         this.duration = 0L
+    }
+
+    fun isZero(): Boolean {
+        return this.packageName == ""
+    }
+
+    companion object {
+        val PreviewExpiredApp = StartedApp("Facebook")
+        init {
+            PreviewExpiredApp.startedAt = 10
+            PreviewExpiredApp.duration = 1
+        }
     }
 }
 

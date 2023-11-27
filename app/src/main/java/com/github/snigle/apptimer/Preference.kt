@@ -26,6 +26,10 @@ class Preference(val preferences: SharedPreferences) {
 
     fun get(app: String): Boolean {
         // TODO: handle default values if no preference set
+        if (!preferences.contains(preferenceKey(app))) {
+            return app.contains(Regex("(snapchat|facebook|instagram|tiktok|twitter|chrome|firefox|game|netflix|youtube)")) &&
+                    !app.contains(Regex("(music|message|launcher|contact)"))
+        }
         return preferences.getBoolean(preferenceKey(app), false)
     }
 
