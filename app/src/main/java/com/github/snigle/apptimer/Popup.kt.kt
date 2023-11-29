@@ -22,7 +22,7 @@ val LogService = "apptimer.popup"
 
 class Popup : ExpandableBubbleService() {
     private var popupLabel: String = ""
-    private lateinit var preferences : Preference
+    private lateinit var preferences: Preference
     private lateinit var packageManager: PackageManager
 
     private var popupApp: StartedApp = StartedApp()
@@ -40,8 +40,7 @@ class Popup : ExpandableBubbleService() {
 
             // or our sweetie, Jetpack Compose
             .bubbleCompose {
-                PopupCompose(
-                    app = this.popupApp,
+                PopupCompose(app = this.popupApp,
                     appLabel = this.popupLabel,
                     setTimer = { app: StartedApp, duration: Long ->
                         app.startTimer(duration)
@@ -102,14 +101,12 @@ class Popup : ExpandableBubbleService() {
 
             .addFloatingBubbleListener(object : FloatingBubbleListener {
                 override fun onFingerMove(
-                    x: Float,
-                    y: Float
+                    x: Float, y: Float
                 ) {
                 } // The location of the finger on the screen which triggers the movement of the bubble.
 
                 override fun onFingerUp(
-                    x: Float,
-                    y: Float
+                    x: Float, y: Float
                 ) {
                 }   // ..., when finger release from bubble
 
@@ -121,7 +118,34 @@ class Popup : ExpandableBubbleService() {
 
 
         return ExpandedBubbleBuilder(this).expandedCompose {
-            Greeting("tata")
+            PopupCompose(app = this.popupApp,
+                appLabel = this.popupLabel,
+                setTimer = { app: StartedApp, duration: Long ->
+                    app.startTimer(duration)
+                    closePopup()
+                },
+                close = { app: StartedApp ->
+                    // Start android launcher
+                    val intent = Intent(Intent.ACTION_MAIN)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    intent.addCategory(Intent.CATEGORY_HOME)
+                    startActivity(intent)
+                    // close popup and reset timer
+                    app.reset()
+                    closePopup()
+
+                },
+                settingsIntent = { app: StartedApp ->
+
+                    // Start settings intent
+                    val intent = Intent(applicationContext, MainActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(intent)
+
+                    app.reset()
+                    closePopup()
+                })
+
         }
             // handle key code
 
@@ -131,7 +155,8 @@ class Popup : ExpandableBubbleService() {
             // animate to the left/right side when release, trfalseue by default
             .enableAnimateToEdge(false)
             // set background dimmer
-            .dimAmount(0.6f)
+            .dimAmount(0.6f).draggable(false)
+
 
     }
 
@@ -186,7 +211,7 @@ class Popup : ExpandableBubbleService() {
         }
 
         if (app.haveTimer()) {
-
+// Todo: Detect lock screen ?
             if (app.expired()) {
                 Log.d(LogService, "detected expired app ${app.packageName}")
                 // Remove timer
@@ -208,10 +233,11 @@ class Popup : ExpandableBubbleService() {
 
         var popup: Popup = this
         GlobalScope.launch(Dispatchers.Main) {
-            val appInfo = packageManager.getApplicationInfo(app.packageName, PackageManager.GET_META_DATA)
-            popup.popupLabel =  packageManager.getApplicationLabel(appInfo).toString()
+            val appInfo =
+                packageManager.getApplicationInfo(app.packageName, PackageManager.GET_META_DATA)
+            popup.popupLabel = packageManager.getApplicationLabel(appInfo).toString()
 
-            popup.minimize()
+            popup.expand()
         }
     }
 
@@ -221,17 +247,22 @@ class Popup : ExpandableBubbleService() {
     }
 }
 
+class Dayli(var duration: Long, val day: Int)
 
 class StartedApp(val packageName: String = "") {
 
-    private val cleanExpiredDuration = 5 * 60 // 4 minutes
-    private var pause = false
+    private val cleanExpiredDuration = 5 * 60 // 5 minutes
+    private var pausedAt: Long = 0L
+    private var pauseDuration: Long = 0L
     private var duration: Long = 0L
     private var startedAt: Long = 0L
+    private var createdAt: Long = 0L
+    private var dailyDuration: Dayli = Dayli(0, 0)
 
     fun startTimer(duration: Long): Unit {
         this.duration = duration
         this.startedAt = Instant.now().epochSecond
+        this.createdAt = Instant.now().epochSecond
     }
 
     fun haveTimer(): Boolean {
@@ -243,23 +274,22 @@ class StartedApp(val packageName: String = "") {
     }
 
     fun expired(): Boolean {
-        // TODO: expiration is not well defined. Maybe I should expire if the duration from the timer creation is higher than the defined timer.
-        // (don't use startedAt which is changed at resume, need keep createdAt in different variable.
-        return duration > 0 && (Instant.now().epochSecond - duration - cleanExpiredDuration > startedAt)
+        return duration > 0 && ((Instant.now().epochSecond - duration - cleanExpiredDuration > createdAt) || (Instant.now().epochSecond - pauseDuration > cleanExpiredDuration))
     }
 
     fun pause(): Unit {
-        pause = true
+        pausedAt = Instant.now().epochSecond
         this.duration = Instant.now().epochSecond - this.startedAt
     }
 
     fun resume(): Unit {
-        pause = false
+        pauseDuration = Instant.now().epochSecond - pausedAt
+        pausedAt = 0
         this.startedAt = Instant.now().epochSecond
     }
 
     fun reset(): Unit {
-        this.pause = false
+        this.pausedAt = 0
         this.startedAt = 0L
         this.duration = 0L
     }
@@ -269,19 +299,18 @@ class StartedApp(val packageName: String = "") {
     }
 
     companion object {
-        val PreviewExpiredApp = StartedApp("Facebook")
+        val PreviewTimedoutApp = StartedApp("Facebook")
+
         init {
-            PreviewExpiredApp.startedAt = 10
-            PreviewExpiredApp.duration = 1
+            PreviewTimedoutApp.startedAt = 10
+            PreviewTimedoutApp.duration = 1
         }
     }
 }
 
 class CustomTimerTask(
-    private val popup: Popup,
-    private val callback: (packageName: String) -> Unit
-) :
-    TimerTask() {
+    private val popup: Popup, private val callback: (packageName: String) -> Unit
+) : TimerTask() {
 
     private val apps = mutableMapOf<String, StartedApp>()
 

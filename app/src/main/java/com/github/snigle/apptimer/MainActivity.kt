@@ -10,12 +10,15 @@ import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -23,10 +26,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmapOrNull
 import com.github.snigle.apptimer.ui.theme.AppTimerTheme
@@ -34,14 +41,18 @@ import com.github.snigle.apptimer.ui.theme.AppTimerTheme
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MyViewModel by viewModels()
+    private var havePermission by mutableStateOf(false)
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
 
-        if (!this.checkPermissions()) {
-            return
+        this.havePermission = this.checkPermissions()
+        if (!this.havePermission) {
+            this.askPermissions()
         }
+
 
         // Get a list of all installed packages
         val packageManager: PackageManager = packageManager
@@ -52,8 +63,7 @@ class MainActivity : ComponentActivity() {
         viewModel.init(Preference.getAppList(appList = appsList))
 
         // Start background service
-        val intent = Intent(this, Popup::class.java)
-        ContextCompat.startForegroundService(this, intent)
+        startService()
 
 
         setContent {
@@ -64,16 +74,25 @@ class MainActivity : ComponentActivity() {
                         .fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ApplicationList(
-                        applications = appsList.map { appInfo ->
-                            Application(
-                                label = appInfo.loadLabel(packageManager).toString(),
-                                packageName = appInfo.activityInfo.packageName
-                            )
-                        },
-                        viewModel = viewModel,
-                        packageManager
-                    )
+                    if (!this.havePermission) {
+                        Column(){
+                            Text(text="Waiting for permission")
+                            Button(onClick = { askPermissions() }) {
+                                Text(text="Ask for permission")
+                            }
+                        }
+                    } else {
+                        ApplicationList(
+                            applications = appsList.map { appInfo ->
+                                Application(
+                                    label = appInfo.loadLabel(packageManager).toString(),
+                                    packageName = appInfo.activityInfo.packageName
+                                )
+                            },
+                            viewModel = viewModel,
+                            packageManager
+                        )
+                    }
                 }
             }
         }
@@ -82,18 +101,33 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (!this.checkPermissions()) {
-            return
-        }
-
+        this.havePermission = this.checkPermissions()
+        startService()
     }
 
     fun checkPermissions(): Boolean {
         if (!Settings.canDrawOverlays(this)) {
+            return false
+        }
+
+        val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        val mode = appOps.unsafeCheckOpNoThrow(
+            AppOpsManager.OPSTR_GET_USAGE_STATS,
+            android.os.Process.myUid(),
+            packageName
+        )
+        if (mode != AppOpsManager.MODE_ALLOWED) {
+            return false
+        }
+
+        return true
+    }
+
+    fun askPermissions() {
+        if (!Settings.canDrawOverlays(this)) {
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
             intent.data = Uri.parse("package:$packageName")
             startActivity(intent)
-            return false
         }
 
         val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
@@ -105,14 +139,20 @@ class MainActivity : ComponentActivity() {
         if (mode != AppOpsManager.MODE_ALLOWED) {
             val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
             startActivity(intent)
-            return false
         }
 
-        return true
+    }
+
+    fun startService() {
+        if (this.havePermission) {
+            val intent = Intent(this, Popup::class.java)
+            ContextCompat.startForegroundService(this, intent)
+        }
     }
 
 
 }
+
 
 class Application(val label: String,val packageName: String)
 
@@ -124,7 +164,7 @@ fun ApplicationList(
 ) {
     LazyColumn {
 
-        items(applications) { application ->
+        items(applications, key = {it.packageName}) { application ->
             val appIcon = packageManager.getApplicationIcon(application.packageName)
             val checked : Boolean? by viewModel.getValueByKey(application.packageName).collectAsState(null)
             Application(
@@ -151,7 +191,7 @@ fun Application(
     Row(modifier) {
         Column {
             if (appIcon != null) {
-                Image(appIcon, contentDescription = "icon")
+                Image(appIcon, contentDescription = "icon", modifier = Modifier.width(30.dp))
             }
         }
         Column(Modifier.weight(1F)) {
