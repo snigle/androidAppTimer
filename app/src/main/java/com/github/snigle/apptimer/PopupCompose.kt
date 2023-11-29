@@ -2,6 +2,7 @@
 
 package com.github.snigle.apptimer
 
+import android.content.res.Resources.Theme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,9 +20,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,26 +73,36 @@ modifier=Modifier.background(Color(210,210,210), RoundedCornerShape(16.dp)),
                 ) {
 
                     if (app.timedOut()) {
-
-                        Button(onClick = { close(app) }) {
-                            Text(text = "Leave $appLabel ?")
+                    Row (modifier = Modifier.padding(2.dp,5.dp,2.dp,5.dp)){
+                        Button(
+                            onClick = { close(app) },
+                            modifier = Modifier.weight(1F).height(50.dp),
+                            elevation = ButtonDefaults.buttonElevation(5.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                        ) {
+                            Text(text = "Leave $appLabel ?", fontWeight = FontWeight.Bold, fontSize = 20.sp)
                         }
+                    }
                     } else {
                         Text(text = "How long time do you want to stay on $appLabel ?")
                     }
-                    Row {
-                        Button(onClick = { setTimer(app, 10) }) {
+                    val buttonModifier = Modifier
+                        .weight(1F)
+                        .padding(2.dp, 0.dp, 2.dp, 0.dp)
+                    val rowModifier = Modifier.padding(5.dp,0.dp,5.dp,0.dp)
+                    Row (modifier = rowModifier){
+                        Button(modifier= buttonModifier, onClick = { setTimer(app, 1 * 60) }) {
                             Text(text = "1 Minute")
                         }
-                        Button(onClick = { setTimer(app, 10 * 60) }) {
+                        Button(modifier= buttonModifier, onClick = { setTimer(app, 10 * 60) }) {
                             Text(text = "5 Minutes")
                         }
                     }
-                    Row {
-                        Button(onClick = { setTimer(app, 15 * 60) }) {
+                    Row (modifier = rowModifier){
+                        Button(modifier= buttonModifier,onClick = { setTimer(app, 15 * 60) }) {
                             Text(text = "15 Minutes")
                         }
-                        Button(onClick = { setTimer(app, 30 * 60) }) {
+                        Button(modifier= buttonModifier,onClick = { setTimer(app, 30 * 60) }) {
                             Text(text = "30 Minutes")
                         }
                     }

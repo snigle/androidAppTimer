@@ -274,7 +274,7 @@ class StartedApp(val packageName: String = "") {
     }
 
     fun expired(): Boolean {
-        return duration > 0 && ((Instant.now().epochSecond - duration - cleanExpiredDuration > createdAt) || (Instant.now().epochSecond - pauseDuration > cleanExpiredDuration))
+        return duration > 0 && ((Instant.now().epochSecond - duration - cleanExpiredDuration > createdAt) || (pauseDuration > cleanExpiredDuration))
     }
 
     fun pause(): Unit {
