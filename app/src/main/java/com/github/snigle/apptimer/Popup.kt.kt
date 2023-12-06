@@ -32,86 +32,7 @@ class Popup : ExpandableBubbleService() {
 
 
     override fun configBubble(): BubbleBuilder {
-
-
         return BubbleBuilder(this)
-
-            // set bubble view
-
-            // or our sweetie, Jetpack Compose
-            .bubbleCompose {
-                PopupCompose(app = this.popupApp,
-                    appLabel = this.popupLabel,
-                    setTimer = { app: StartedApp, duration: Long ->
-                        app.startTimer(duration)
-                        closePopup()
-                    },
-                    close = { app: StartedApp ->
-                        // Start android launcher
-                        val intent = Intent(Intent.ACTION_MAIN)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        intent.addCategory(Intent.CATEGORY_HOME)
-                        startActivity(intent)
-                        // close popup and reset timer
-                        app.reset()
-                        closePopup()
-
-                    },
-                    settingsIntent = { app: StartedApp ->
-
-                        // Start settings intent
-                        val intent = Intent(applicationContext, MainActivity::class.java)
-                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        startActivity(intent)
-
-                        app.reset()
-                        closePopup()
-                    })
-
-            }
-
-            // set style for the bubble, fade animation by default
-            .bubbleStyle(null)
-
-            // set start location for the bubble, (x=0, y=0) is the top-left
-            .startLocation(0, 0)    // in dp
-            .startLocationPx(0, 0)  // in px
-
-
-            // enable auto animate bubble to the left/right side when release, true by default
-            .enableAnimateToEdge(false)
-
-            // set close-bubble view
-            // .closeBubbleView(ViewHelper.fromDrawable(this, com.torrydo.floatingbubbleview.R.drawable.ic_close_bubble, 60, 60))
-
-            // set style for close-bubble, null by default
-            // .closeBubbleStyle(null)
-
-            // DYNAMIC_CLOSE_BUBBLE: close-bubble moving based on the bubble's location
-            // FIXED_CLOSE_BUBBLE (default): bubble will automatically move to the close-bubble when it reaches the closable-area
-            //.closeBehavior(CloseBubbleBehavior.DYNAMIC_CLOSE_BUBBLE)
-
-            // the more value (dp), the larger closeable-area
-            .distanceToClose(0)
-
-            .bubbleDraggable(false)
-
-            // enable bottom background, false by default
-            //.bottomBackground(true)
-
-            .addFloatingBubbleListener(object : FloatingBubbleListener {
-                override fun onFingerMove(
-                    x: Float, y: Float
-                ) {
-                } // The location of the finger on the screen which triggers the movement of the bubble.
-
-                override fun onFingerUp(
-                    x: Float, y: Float
-                ) {
-                }   // ..., when finger release from bubble
-
-                override fun onFingerDown(x: Float, y: Float) {} // ..., when finger tap the bubble
-            })
     }
 
     override fun configExpandedBubble(): ExpandedBubbleBuilder {
@@ -249,15 +170,37 @@ class Popup : ExpandableBubbleService() {
 
 class Dayli(var duration: Long, val day: Int)
 
-class StartedApp(val packageName: String = "") {
+class StartedApp {
 
+    val packageName: String
     private val cleanExpiredDuration = 5 * 60 // 5 minutes
-    private var pausedAt: Long = 0L
-    private var pauseDuration: Long = 0L
-    private var duration: Long = 0L
-    private var startedAt: Long = 0L
-    private var createdAt: Long = 0L
-    private var dailyDuration: Dayli = Dayli(0, 0)
+    private var pausedAt: Long
+    private var pauseDuration: Long
+    private var duration: Long
+    private var startedAt: Long
+    private var createdAt: Long
+    private var dailyDuration: Dayli
+
+    constructor(packageName: String = "") {
+        this.packageName = packageName
+
+        // Copy paste from reset func
+        this.pausedAt = 0L
+        this.pauseDuration = 0L
+        this.duration = 0L
+        this.startedAt = 0L
+        this.createdAt = 0L
+        this.dailyDuration = Dayli(0, 0)
+    }
+
+    fun reset(): Unit {
+        this.pausedAt = 0L
+        this.pauseDuration = 0L
+        this.duration = 0L
+        this.startedAt = 0L
+        this.createdAt = 0L
+        this.dailyDuration = Dayli(0, 0)
+    }
 
     fun startTimer(duration: Long): Unit {
         this.duration = duration
@@ -288,11 +231,7 @@ class StartedApp(val packageName: String = "") {
         this.startedAt = Instant.now().epochSecond
     }
 
-    fun reset(): Unit {
-        this.pausedAt = 0
-        this.startedAt = 0L
-        this.duration = 0L
-    }
+
 
     fun isZero(): Boolean {
         return this.packageName == ""
