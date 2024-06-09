@@ -84,7 +84,7 @@ modifier=Modifier.background(Color(210,210,210), RoundedCornerShape(16.dp)),
                         }
                     }
                     } else {
-                        Text(text = "How long time do you want to stay on $appLabel ?")
+                        Text(text = "AppTimer: $appLabel" + "${if(app.hasDailyUsage()) "( temps passé : "+app.formatDailyUsage()+" )" else ""}")
                     }
                     val buttonModifier = Modifier
                         .weight(1F)
@@ -94,7 +94,7 @@ modifier=Modifier.background(Color(210,210,210), RoundedCornerShape(16.dp)),
                         Button(modifier= buttonModifier, onClick = { setTimer(app, 1 * 60) }) {
                             Text(text = "1 Minute")
                         }
-                        Button(modifier= buttonModifier, onClick = { setTimer(app, 10 * 60) }) {
+                        Button(modifier= buttonModifier, onClick = { setTimer(app, 5 * 60) }) {
                             Text(text = "5 Minutes")
                         }
                     }
@@ -125,6 +125,16 @@ modifier=Modifier.background(Color(210,210,210), RoundedCornerShape(16.dp)),
 @Preview
 fun PopupComposePreview() {
     return PopupCompose(app = StartedApp("test"),
+        appLabel = "Facebook",
+        setTimer = { _, _ -> },
+        settingsIntent = { _ -> },
+        close = {})
+}
+
+@Composable
+@Preview
+fun PopupComposeUsagePreview() {
+    return PopupCompose(app = StartedApp.PreviewDailyUsageApp,
         appLabel = "Facebook",
         setTimer = { _, _ -> },
         settingsIntent = { _ -> },

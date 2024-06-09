@@ -6,15 +6,17 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.util.Log
+import androidx.compose.material3.Text
 import androidx.preference.PreferenceManager
-import com.torrydo.floatingbubbleview.FloatingBubbleListener
 import com.torrydo.floatingbubbleview.service.expandable.BubbleBuilder
 import com.torrydo.floatingbubbleview.service.expandable.ExpandableBubbleService
 import com.torrydo.floatingbubbleview.service.expandable.ExpandedBubbleBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
 import java.util.Timer
 import java.util.TimerTask
 
@@ -32,7 +34,7 @@ class Popup : ExpandableBubbleService() {
 
 
     override fun configBubble(): BubbleBuilder {
-        return BubbleBuilder(this)
+        return BubbleBuilder(this).bubbleCompose { Text(text = "") }
     }
 
     override fun configExpandedBubble(): ExpandedBubbleBuilder {
@@ -87,7 +89,7 @@ class Popup : ExpandableBubbleService() {
         packageManager = applicationContext.packageManager
         Log.d("test", "restart service")
 
-        Timer().scheduleAtFixedRate(
+        Timer().schedule(
             CustomTimerTask(
                 this,
                 callback = { packageName: String -> this.detectRunningApp(packageName) }), 0, 1000
@@ -99,16 +101,22 @@ class Popup : ExpandableBubbleService() {
     // Pause 10h01 , ...
     // Start 10h15 , timer 4m
     private fun detectRunningApp(packageName: String): Unit {
-        // Do nothing if popup is open
-        if (popupApp.packageName != "") {
-            return
-        }
 
         var app = apps[packageName]
         if (app == null) {
             Log.d(LogService, "detected new app ${packageName}")
             app = StartedApp(packageName)
             apps[packageName] = app
+        }
+
+        // Do nothing if popup is open
+        if (popupApp.packageName != "") {
+            // Application have been close with back or home button
+            if (popupApp.packageName != app.packageName) {
+                app.reset()
+                closePopup()
+            }
+            return
         }
 
         // Detect Pause
@@ -168,7 +176,17 @@ class Popup : ExpandableBubbleService() {
     }
 }
 
-class Dayli(var duration: Long, val day: Int)
+class Daily(private var duration: Long, val day: Int) {
+    fun addDuration(duration: Long): Unit {
+        if (duration > 0 ) {
+            this.duration+=duration
+        }
+    }
+
+    fun getDuration(): Long {
+        return this.duration
+    }
+}
 
 class StartedApp {
 
@@ -179,7 +197,7 @@ class StartedApp {
     private var duration: Long
     private var startedAt: Long
     private var createdAt: Long
-    private var dailyDuration: Dayli
+    private var dailyDuration: Daily
 
     constructor(packageName: String = "") {
         this.packageName = packageName
@@ -190,19 +208,42 @@ class StartedApp {
         this.duration = 0L
         this.startedAt = 0L
         this.createdAt = 0L
-        this.dailyDuration = Dayli(0, 0)
+        this.dailyDuration = Daily(0, 0)
     }
 
     fun reset(): Unit {
+        if (this.timedOut()) {
+            this.registerDailyUsage()
+        }
         this.pausedAt = 0L
         this.pauseDuration = 0L
         this.duration = 0L
         this.startedAt = 0L
         this.createdAt = 0L
-        this.dailyDuration = Dayli(0, 0)
+    }
+
+    fun registerDailyUsage(): Unit {
+        if (!this.hasDailyUsage()) {
+            this.dailyDuration = Daily(0,LocalDate.now().dayOfYear)
+        }
+        this.dailyDuration.addDuration(this.duration)
+    }
+
+    fun hasDailyUsage(): Boolean {
+        return this.dailyDuration.day == LocalDate.now().dayOfYear && this.dailyDuration.getDuration() > 0
+    }
+
+    fun formatDailyUsage(): String {
+        val duration = Duration.ofSeconds(this.dailyDuration.getDuration())
+        val hours = duration.toHours()
+        val minutes = duration.minusHours(hours).toMinutes()
+
+        return "${if (hours > 0) "$hours"+"h " else ""}" +
+                "${if (minutes > 0) "$minutes"+"m" else ""}"
     }
 
     fun startTimer(duration: Long): Unit {
+        this.reset()
         this.duration = duration
         this.startedAt = Instant.now().epochSecond
         this.createdAt = Instant.now().epochSecond
@@ -223,6 +264,7 @@ class StartedApp {
     fun pause(): Unit {
         pausedAt = Instant.now().epochSecond
         this.duration = Instant.now().epochSecond - this.startedAt
+        this.registerDailyUsage()
     }
 
     fun resume(): Unit {
@@ -239,10 +281,13 @@ class StartedApp {
 
     companion object {
         val PreviewTimedoutApp = StartedApp("Facebook")
+        val PreviewDailyUsageApp = StartedApp("Facebook")
 
         init {
             PreviewTimedoutApp.startedAt = 10
             PreviewTimedoutApp.duration = 1
+
+            PreviewDailyUsageApp.dailyDuration = Daily(60*60, LocalDate.now().dayOfYear)
         }
     }
 }
