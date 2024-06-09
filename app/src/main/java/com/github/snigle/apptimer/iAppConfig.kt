@@ -10,15 +10,7 @@ class AppConfigRepo(val preferences: SharedPreferences, val packageManager: Pack
 
         val list = getAppInfoList()
         return list.map {appInfo: ResolveInfo ->
-            val packageName = appInfo.activityInfo.packageName
-            var monitoringEnabled = false
-            // Set default value
-            monitoringEnabled = if (!preferences.contains(preferenceKey(packageName))) {
-                getDefaultValue(packageName)
-            } else {
-                preferences.getBoolean(preferenceKey(packageName), false)
-            }
-            AppConfig(packageName, appInfo.loadLabel(packageManager).toString(), monitoringEnabled)
+            getConfig(appInfo.activityInfo.packageName, appInfo.loadLabel(packageManager).toString())
         }
 
     }
@@ -28,11 +20,14 @@ class AppConfigRepo(val preferences: SharedPreferences, val packageManager: Pack
 
     private fun getDefaultValue(packageName: String): Boolean {
         return packageName.contains(Regex("(snapchat|facebook|instagram|tiktok|twitter|chrome.|firefox|game|netflix|youtube)")) ||
-                packageName.contains(Regex("(music|message|messenger|launcher|contact)"))
+                !packageName.contains(Regex("(music|message|messenger|launcher|contact|appTimer)"))
     }
 
     override fun Find(packageName: String): AppConfig {
-        TODO("Not yet implemented")
+        val appInfo =
+            packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
+
+        return getConfig(appInfo.packageName, appInfo.loadLabel(packageManager).toString())
     }
 
     override fun Save(app: AppConfig) {
@@ -47,6 +42,22 @@ class AppConfigRepo(val preferences: SharedPreferences, val packageManager: Pack
 
         // Retrieve a list of apps that can be launched
         return packageManager.queryIntentActivities(launcherIntent, 0)
+    }
+
+    fun getConfig(packageName: String, name: String): AppConfig{
+
+        var monitoringEnabled = if (!preferences.contains(preferenceKey(packageName))) {
+            getDefaultValue(packageName)
+        } else {
+            preferences.getBoolean(preferenceKey(packageName), false)
+        }
+
+        // Secure app timer app
+        if (packageName.contains("com.github.snigle.apptimer")) {
+            monitoringEnabled = false
+        }
+
+        return AppConfig(packageName, name, monitoringEnabled)
     }
 
     fun getAppList(appList: List<ResolveInfo>): List<String> {

@@ -5,12 +5,70 @@ import java.time.Instant
 import java.time.LocalDate
 
 interface IAppUsage {
-    fun Find(packageName: String): AppUsage?
-    fun Save(usage: AppUsage)
+    fun FindRunning(): AppUsage
+    fun StartTimer(app: AppUsage, duration: Long)
+    fun PauseTimer(app: AppUsage)
+    fun ExtendTimer(app: AppUsage, duration: Long)
+    fun Close(app: AppUsage)
+    fun AskDuration(appConfig: AppConfig, app: AppUsage, callback: (duration: Long) -> Unit)
+    fun AskTerminate(appConfig: AppConfig, app: AppUsage, callback: (duration: Long) -> Unit)
+    fun ResumeTimer(runningApp: AppUsage)
+}
+
+data class AppUsage(val packageName: String, var timer: Timer?) {
+
+    fun IsZero(): Boolean {
+        return packageName == ""
+    }
+
+    fun HaveTimer(): Boolean {
+        return timer != null
+    }
+
+
+}
+
+data class Timer(var duration: Long) {
+    private var lastStart: Long = 0
+    private var aggregatedDuration: Long = 0
+
+    fun GetDuration(): Long {
+        val now = System.currentTimeMillis()
+        if (lastStart != 0L) return now - lastStart + aggregatedDuration
+        return aggregatedDuration
+    }
+
+    fun Timeout(): Boolean {
+        return GetDuration() > duration
+    }
+
+    fun Extends(newDuration: Long) {
+        duration += duration
+        Start()
+    }
+
+    fun Pause() {
+        val now = System.currentTimeMillis()
+        aggregatedDuration += now - lastStart
+        lastStart = 0
+    }
+
+    fun Start() {
+        val now = System.currentTimeMillis()
+        if (lastStart != 0L) {
+            aggregatedDuration += now - lastStart
+        }
+        lastStart = now
+    }
+
+    fun IsPaused(): Boolean {
+        return lastStart == 0L
+    }
+
 }
 
 // App describe the time usage of an application.
-class AppUsage {
+class AppUsageOld {
 
     val packageName: String
     private val cleanExpiredDuration = 5 * 60 // 5 minutes
@@ -60,8 +118,7 @@ class AppUsage {
         val hours = duration.toHours()
         val minutes = duration.minusHours(hours).toMinutes()
 
-        return "${if (hours > 0) "$hours"+"h " else ""}" +
-                "${if (minutes > 0) "$minutes"+"m" else ""}"
+        return "${if (hours > 0) "$hours" + "h " else ""}" + "${if (minutes > 0) "$minutes" + "m" else ""}"
     }
 
     fun startTimer(duration: Long): Unit {
@@ -96,20 +153,19 @@ class AppUsage {
     }
 
 
-
     fun isZero(): Boolean {
         return this.packageName == ""
     }
 
     companion object {
-        val PreviewTimedoutAppUsage = AppUsage("Facebook")
-        val PreviewDailyUsageAppUsage = AppUsage("Facebook")
+        val PreviewTimedoutAppUsageOld = AppUsageOld("Facebook")
+        val PreviewDailyUsageAppUsageOld = AppUsageOld("Facebook")
 
         init {
-            PreviewTimedoutAppUsage.startedAt = 10
-            PreviewTimedoutAppUsage.duration = 1
+            PreviewTimedoutAppUsageOld.startedAt = 10
+            PreviewTimedoutAppUsageOld.duration = 1
 
-            PreviewDailyUsageAppUsage.dailyDuration = Daily(60*60, LocalDate.now().dayOfYear)
+            PreviewDailyUsageAppUsageOld.dailyDuration = Daily(60 * 60, LocalDate.now().dayOfYear)
         }
     }
 }

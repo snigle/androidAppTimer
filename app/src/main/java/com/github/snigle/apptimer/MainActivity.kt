@@ -109,7 +109,7 @@ class MainActivity : ComponentActivity() {
 
     fun startService() {
         if (this.havePermission) {
-            val intent = Intent(this, Popup::class.java)
+            val intent = Intent(this, ServicePopup::class.java)
             ContextCompat.startForegroundService(this, intent)
         }
     }

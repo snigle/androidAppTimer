@@ -28,7 +28,7 @@
             </intent-filter>
         </activity>
         <service
-            android:name="com.github.snigle.apptimer.Popup"
+            android:name="com.github.snigle.apptimer.ServicePopup"
             android:foregroundServiceType="specialUse"
             >
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="foo"/>  <!-- optional -->
