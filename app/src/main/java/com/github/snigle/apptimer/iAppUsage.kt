@@ -19,7 +19,7 @@ class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
     override fun FindRunning(): AppUsage {
         val packageName = getLastStartedApp(servicePopup)
         var app = apps[packageName]
-        if ( app == null) {
+        if ( app == null || (app.timer != null && app.timer!!.Expired())) {
             app = AppUsage(packageName ,null)
             apps[packageName] = app
         }

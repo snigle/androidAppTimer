@@ -42,6 +42,11 @@ data class Timer(var duration: Long) {
         return GetDuration() > duration
     }
 
+    fun Expired(): Boolean {
+        val now = System.currentTimeMillis()
+        return now - lastStart > 15 * 60 * 1000
+    }
+
     fun Extends(newDuration: Long) {
         duration += duration
         Start()
