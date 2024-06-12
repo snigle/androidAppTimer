@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.github.snigle.apptimer
+package com.github.snigle.apptimer.composable
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -26,16 +26,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.github.snigle.apptimer.domain.AppUsage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PopupCompose2(
+fun PopupCompose(
     modifier: Modifier = Modifier,
     appUsage: AppUsage,
     appLabel: String,
     setTimer: (duration: Long) -> Unit,
-    settingsIntent: (app: AppUsage) -> Unit,
-    close: (app: AppUsage) -> Unit,
+    settingsIntent: () -> Unit,
 ) {
 
 
@@ -110,8 +110,8 @@ modifier=Modifier.background(Color(210,210,210), RoundedCornerShape(16.dp)),
 
                     if (!appUsage.HaveTimer()) {
                         Row {
-
-                            Button(onClick = { settingsIntent(appUsage) }) {
+                            Button(onClick = {
+                                settingsIntent(); setTimer(0) }) {
                                 Text(text = "Settings")
                             }
                         }
@@ -125,11 +125,11 @@ modifier=Modifier.background(Color(210,210,210), RoundedCornerShape(16.dp)),
 @Composable
 @Preview
 fun PopupCompose2Preview() {
-    return PopupCompose2(appUsage = AppUsage("test", null),
+    return PopupCompose(appUsage = AppUsage("test", null),
         appLabel = "Facebook",
         setTimer = { _ -> },
-        settingsIntent = { _ -> },
-        close = {})
+        settingsIntent = { -> },
+        )
 }
 
 //@Composable
