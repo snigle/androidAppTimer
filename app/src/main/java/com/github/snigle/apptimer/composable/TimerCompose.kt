@@ -8,10 +8,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,129 +25,141 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.github.snigle.apptimer.domain.Timer
 import com.github.snigle.apptimer.domain.formatDurationInSeconds
+import com.github.snigle.apptimer.ui.theme.AppTimerTheme
 import kotlinx.coroutines.delay
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimerCompose(
     modifier: Modifier = Modifier, timer: Timer,
     onClick: () -> Unit,
 ) {
 
-    var timeLeft by remember { mutableStateOf((timer.GetTimeLeft() + 1000) / 1000) }
-    var elapsedTime by remember { mutableStateOf((timer.ElapseTime()) / 1000) }
+    var timeLeft by remember { mutableStateOf((timer.GetTimeLeft() + 999) / 1000) }
+    var elapsedTime by remember { mutableStateOf(timer.ElapseTime() / 1000) }
+    val totalDuration = remember { timer.duration / 1000 }
 
     LaunchedEffect(Unit) {
         while (timeLeft > 0) {
             delay(1000L)
-            timeLeft = (timer.GetTimeLeft() + 1000) / 1000
-            elapsedTime = (timer.ElapseTime()) / 1000
+            timeLeft = (timer.GetTimeLeft() + 999) / 1000
+            elapsedTime = timer.ElapseTime() / 1000
         }
     }
 
-    val progress = timeLeft / (timer.duration.toFloat() / 1000)
+    val progress = if (totalDuration > 0) {
+        (timeLeft / totalDuration.toFloat()).coerceIn(0f, 1f)
+    } else {
+        0f
+    }
 
 
-    return Box(modifier = Modifier.clickable(
-        interactionSource = remember { MutableInteractionSource() },
-        indication = null,
-        onClick = onClick)) {
-        Column(
-            modifier = Modifier.background(Color.Transparent)
-        ) {
-
-
-            Box {
-                CircularCountdown(progress = progress, timeLeft = elapsedTime)
-
-
-            }
-        }
+    Box(
+        modifier = modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = onClick
+        )
+    ) {
+        CircularCountdown(
+            progress = progress,
+            elapsedTime = elapsedTime,
+            totalDuration = totalDuration
+        )
     }
 }
 
 @Composable
-fun CircularCountdown(progress: Float, timeLeft: Long) {
-    val formatted = formatDurationInSeconds(timeLeft)
-    val strokeWidth = 24.dp
+fun CircularCountdown(
+    progress: Float,
+    elapsedTime: Long,
+    totalDuration: Long,
+    modifier: Modifier = Modifier
+) {
+    val formattedElapsedTime = formatDurationInSeconds(elapsedTime)
+    val formattedTotalDuration = formatDurationInSeconds(totalDuration)
+    val strokeWidth = 6.dp
+
+    // Hoist colors outside of the Canvas draw scope
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val progressColor = MaterialTheme.colorScheme.primary
+
     Box(
-//        modifier = Modifier.border(width = 2.dp, color = Color.Black, shape = CircleShape),
         contentAlignment = Alignment.Center,
-        modifier = Modifier
-            .background(color = Color.White, shape = CircleShape)
+        modifier = modifier
+            .size(64.dp)
             .clip(CircleShape)
-            .size(70.dp)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f))
     ) {
-        Canvas(modifier = Modifier.size(70.dp)) {//.width(200.dp)) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            // Track
             drawCircle(
-                color = Color.Gray,
-                radius = size.minDimension / 2,
+                color = trackColor,
                 style = Stroke(width = strokeWidth.toPx())
             )
+            // Progress
             drawArc(
-                color = Color.Green,
+                color = progressColor,
                 startAngle = -90f,
                 sweepAngle = 360 * progress,
                 useCenter = false,
-                style = Stroke(width = strokeWidth.toPx())
+                style = Stroke(width = strokeWidth.toPx(), cap = StrokeCap.Round)
             )
         }
-        Text(
-            text = formatted,
-            textAlign = TextAlign.Center,
-            fontWeight = FontWeight.Bold,
-            fontSize = 20.sp
-        )
 
-
-//            style = MaterialTheme.typography.copy(),
-//
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = formattedElapsedTime,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Divider(
+                modifier = Modifier.width(24.dp),
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+            )
+            Text(
+                text = formattedTotalDuration,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
-//@Preview(showBackground = true)
-//@Composable
-//fun DefaultPreview() {
-//    CountdownTimerApp(duration = 10)
-//}
 
+@Preview(name = "Timer Active")
 @Composable
-@Preview
 fun TimerComposePreview() {
-    return TimerCompose(timer = Timer(70 * 1000), onClick = {})
+    val timer = Timer(70 * 1000)
+    timer.Start()
+    // Simulate some time has passed for preview
+    try {
+        val field = timer::class.java.getDeclaredField("lastStart")
+        field.isAccessible = true
+        field.set(timer, System.currentTimeMillis() - 25 * 1000)
+    } catch (_: Exception) {
+    }
+
+    AppTimerTheme {
+        TimerCompose(timer = timer, onClick = {})
+    }
 }
 
+@Preview(name = "Timer Circle Component")
 @Composable
-@Preview
-fun TimerCircle() {
-    return CircularCountdown(progress = 1.0F, timeLeft= 135L)
+fun TimerCirclePreview() {
+    AppTimerTheme {
+        CircularCountdown(progress = 0.65f, elapsedTime = 25, totalDuration = 70)
+    }
 }
-
-//@Composable
-//@Preview
-//fun PopupComposeUsagePreview() {
-//    return PopupCompose(app = StartedApp.PreviewDailyUsageApp,
-//        appLabel = "Facebook",
-//        setTimer = { _, _ -> },
-//        settingsIntent = { _ -> },
-//        close = {})
-//}
-//
-//@Composable
-//@Preview
-//fun PopupComposeExpiredPreview() {
-//    return PopupCompose(app = StartedApp.PreviewTimeoutApp,
-//        appLabel = "Facebook",
-//        setimer = { _, _ -> },
-//        settingsIntent = { _ -> },
-//        close = {})
-//}

@@ -106,6 +106,7 @@ class uAppMonitoring(val appUsageRepo: IAppUsage, val appConfigRepo: IAppConfig)
             if (duration == null) {
                 app.timer?.Start()
                 appUsageRepo.Save(app)
+                appUsageRepo.DisplayTimer(app.timer!!,  {AskTerminate(appConfig, app)})
             } else if (duration != 0L) {
                 app.timer!!.Extends(duration)
                 appUsageRepo.Save(app)

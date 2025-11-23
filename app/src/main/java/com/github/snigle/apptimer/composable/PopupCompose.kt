@@ -3,6 +3,8 @@
 package com.github.snigle.apptimer.composable
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -54,7 +56,7 @@ fun PopupCompose(
     DisposableEffect(Unit) {
         onDispose {
             if (!choiceMade) {
-                onSetTimer(null) // Assuming 0 is the "no-action" value
+                onSetTimer(null) // Assuming null is the "no-action" value
             }
         }
     }
@@ -63,7 +65,16 @@ fun PopupCompose(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f)),
+            .background(Color.Black.copy(alpha = 0.5f))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {
+                // Only dismiss if the timer has not run out
+                if (appUsage.timer != null && !appUsage.timer!!.Timeout()) {
+                    onSetTimer(null)
+                }
+            },
         verticalArrangement = Arrangement.Bottom,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -110,7 +121,7 @@ fun PopupCompose(
                             color = MaterialTheme.colorScheme.error
                         )
                         Button(
-                            onClick = { onSetTimer(0) },
+                            onClick = { onSetTimer(null) },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                         ) {
@@ -144,7 +155,7 @@ fun PopupCompose(
                 if (!appUsage.HaveTimer()) {
                     TextButton(onClick = {
                         settingsIntent()
-                        onSetTimer(0)
+                        onSetTimer(null)
                     }) {
                         Text("Configurer les limites pour cette application")
                     }
