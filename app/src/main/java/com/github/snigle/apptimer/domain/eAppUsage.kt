@@ -9,7 +9,7 @@ import java.util.Locale
 interface IAppUsage {
     fun FindRunning(): AppUsage
     fun AskDuration(appConfig: AppConfig, app: AppUsage, callback: (duration: Long) -> Unit)
-    fun AskTerminate(appConfig: AppConfig, app: AppUsage, callback: (duration: Long) -> Unit)
+    fun AskTerminate(appConfig: AppConfig, app: AppUsage, callback: (duration: Long?) -> Unit)
 
     fun DisplayTimer(timer: Timer, onclick: () -> Unit)
 

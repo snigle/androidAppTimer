@@ -103,7 +103,10 @@ class uAppMonitoring(val appUsageRepo: IAppUsage, val appConfigRepo: IAppConfig)
         Log.d(LogService, "ask terminate for app ${app.packageName} ${app.timer!!.ElapseTime()/1000} ${app.timer!!.GetAggregateDuration()/1000}")
 
         appUsageRepo.AskTerminate(appConfig, app) { duration ->
-            if (duration != 0L) {
+            if (duration == null) {
+                app.timer?.Start()
+                appUsageRepo.Save(app)
+            } else if (duration != 0L) {
                 app.timer!!.Extends(duration)
                 appUsageRepo.Save(app)
                 appUsageRepo.DisplayTimer(app.timer!!,  {AskTerminate(appConfig, app)})

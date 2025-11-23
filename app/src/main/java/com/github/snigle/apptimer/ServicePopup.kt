@@ -2,6 +2,7 @@ package com.github.snigle.apptimer
 
 import android.content.Intent
 import android.util.Log
+import android.view.KeyEvent
 import androidx.compose.runtime.Composable
 import androidx.preference.PreferenceManager
 import com.github.snigle.apptimer.composable.PopupCompose
@@ -81,8 +82,16 @@ class ServicePopup : ExpandableBubbleService() {
         return ExpandedBubbleBuilder(this).expandedCompose {
             timerSettingComponent()
         }
+
             // handle key code
 
+            .onDispatchKeyEvent {
+                if(it.keyCode == KeyEvent.KEYCODE_BACK){
+                    minimize()
+                }
+                null
+            }
+            .draggable(true)
             .style(null)
             //
             .fillMaxWidth(true)

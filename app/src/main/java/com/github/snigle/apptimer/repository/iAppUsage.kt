@@ -65,7 +65,7 @@ class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun openPopup(appConfig: AppConfig, app: AppUsage, callback: (duration: Long)->Unit) {
+    fun openPopup(appConfig: AppConfig, app: AppUsage, callback: (duration: Long?)->Unit) {
 
         servicePopup.timerSettingComponent = {
             PopupCompose(
@@ -89,18 +89,27 @@ class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
     {
         Log.d(LogService, "ask duration for app ${app.packageName}")
         openPopup(appConfig, app) { duration ->
+            var duration = duration
+            if (duration == null) {
+                duration = appConfig.defaultDuration.inWholeMilliseconds
+            }
             Log.d(LogService, "received duration ${duration / 1000}s for app ${app.packageName}")
             servicePopup.removeAll()
             callback(duration)
         }
     }
 
-    override fun AskTerminate(appConfig: AppConfig, app: AppUsage, callback: (duration: Long) -> Unit) {
+    override fun AskTerminate(appConfig: AppConfig, app: AppUsage, callback: (duration: Long?) -> Unit) {
         Log.d(LogService, "ask terminate for app ${app.packageName}")
         openPopup(appConfig, app) { duration ->
             servicePopup.removeAll()
 
-            if (duration != 0L) {
+            if (duration == null) {
+                Log.d(
+                    LogService,
+                    "received back for app ${app.packageName}"
+                )
+            } else if (duration != 0L) {
                 Log.d(
                     LogService,
                     "received duration ${duration / 1000}s for app ${app.packageName}"
