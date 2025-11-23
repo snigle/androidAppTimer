@@ -10,7 +10,8 @@ interface IAppUsage {
     fun FindRunning(): AppUsage
     fun AskDuration(appConfig: AppConfig, app: AppUsage, callback: (duration: Long) -> Unit)
     fun AskTerminate(appConfig: AppConfig, app: AppUsage, callback: (duration: Long) -> Unit)
-    fun DisplayTimer(timer: Timer)
+
+    fun DisplayTimer(timer: Timer, onclick: () -> Unit)
 
     fun HidePopup()
     fun Save(app: AppUsage)
@@ -33,6 +34,21 @@ enum class TimerStatus {
     Created, Running, Paused
 }
 
+fun formatDurationInSeconds(seconds: Long): String {
+    if (seconds < 0) {
+        return "0s"
+    }
+    val minutes = seconds / 60
+    val remainingSeconds = seconds % 60
+    return if (minutes > 0 && remainingSeconds > 0) {
+        "${minutes}m ${remainingSeconds}s"
+    } else if (minutes > 0) {
+        "${minutes}m"
+    } else {
+        "${remainingSeconds}s"
+    }
+}
+
 data class Timer(var duration: Long) {
     private var lastStart: Long = 0
     private var status = TimerStatus.Created
@@ -46,10 +62,17 @@ data class Timer(var duration: Long) {
     fun GetTimeLeft(): Long {
         val now = System.currentTimeMillis()
         var timeLeft = duration - aggregatedDuration
+        if (status == TimerStatus.Paused) {
+            return timeLeft
+        }
         if (lastStart > 0) {
             timeLeft = timeLeft - now + lastStart
         }
         return timeLeft
+    }
+
+    fun GetAggregateDuration(): Long {
+        return aggregatedDuration
     }
 
     fun Timeout(): Boolean {

@@ -18,6 +18,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,6 +32,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.snigle.apptimer.domain.AppUsage
+import com.github.snigle.apptimer.domain.formatDurationInSeconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +44,22 @@ fun PopupCompose(
     settingsIntent: () -> Unit,
 ) {
 
+    // Permit to know if user action have been done.
+    // Else, component should have been destroy by home or swipe buttons.
+    // Then just call callback to unlock the waiting use case.
+    var choiceMade by remember { mutableStateOf(false) }
+    val setTimer = { duration: Long ->
+        choiceMade = true
+        setTimer(duration)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            if(!choiceMade) {
+                setTimer(0)
+            }
+        }
+    }
 
     return    Column(
         modifier = Modifier
@@ -74,7 +96,9 @@ modifier=Modifier.background(Color(210,210,210), RoundedCornerShape(16.dp)),
                     Row (modifier = Modifier.padding(2.dp,5.dp,2.dp,5.dp)){
                         Button(
                             onClick = { setTimer(0) },
-                            modifier = Modifier.weight(1F).height(50.dp),
+                            modifier = Modifier
+                                .weight(1F)
+                                .height(50.dp),
                             elevation = ButtonDefaults.buttonElevation(5.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
                         ) {
@@ -82,29 +106,32 @@ modifier=Modifier.background(Color(210,210,210), RoundedCornerShape(16.dp)),
                         }
                     }
                     } else {
-                        Text(text = "AppTimer: $appLabel" )//+ "${if(app.hasDailyUsage()) "( temps passé : "+app.formatDailyUsage()+" )" else ""}")
+                        Text(text = "$appLabel: ${formatDurationInSeconds((appUsage.timer?.ElapseTime() ?: 0)/1000)} / ${formatDurationInSeconds((appUsage.timer?.duration ?: 0)/1000)}. Extends ?" )//+ "${if(app.hasDailyUsage()) "( temps passé : "+app.formatDailyUsage()+" )" else ""}")
                     }
                     val buttonModifier = Modifier
                         .weight(1F)
                         .padding(2.dp, 0.dp, 2.dp, 0.dp)
                     val rowModifier = Modifier.padding(5.dp,0.dp,5.dp,0.dp)
                     Row (modifier = rowModifier){
-                        Button(modifier= buttonModifier, onClick = { setTimer(5 * 1000) }) {
-                            Text(text = "5 Seconds")
-                        }
-                        Button(modifier= buttonModifier, onClick = { setTimer(1 * 60 * 1000) }) {
-                            Text(text = "1 Minute")
-                        }
+//                        Button(modifier= buttonModifier, onClick = { setTimer(5 * 1000) }) {
+//                            Text(text = "5 Seconds")
+//                        }
+//                        Button(modifier= buttonModifier, onClick = { setTimer(1 * 60 * 1000) }) {
+//                            Text(text = "1 Minute")
+//                        }
                         Button(modifier= buttonModifier, onClick = { setTimer(5 * 60* 1000) }) {
                             Text(text = "5 Minutes")
                         }
-                    }
-                    Row (modifier = rowModifier){
                         Button(modifier= buttonModifier,onClick = { setTimer(15 * 60* 1000) }) {
                             Text(text = "15 Minutes")
                         }
+                    }
+                    Row (modifier = rowModifier){
                         Button(modifier= buttonModifier,onClick = { setTimer(30 * 60* 1000) }) {
                             Text(text = "30 Minutes")
+                        }
+                        Button(modifier= buttonModifier,onClick = { setTimer(60 * 60* 1000) }) {
+                            Text(text = "1 Heure")
                         }
                     }
 
@@ -125,11 +152,12 @@ modifier=Modifier.background(Color(210,210,210), RoundedCornerShape(16.dp)),
 @Composable
 @Preview
 fun PopupCompose2Preview() {
-    return PopupCompose(appUsage = AppUsage("test", null),
+    return PopupCompose(
+        appUsage = AppUsage("test", null),
         appLabel = "Facebook",
         setTimer = { _ -> },
         settingsIntent = { -> },
-        )
+    )
 }
 
 //@Composable

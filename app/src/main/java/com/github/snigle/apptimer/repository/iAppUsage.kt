@@ -6,11 +6,15 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.github.snigle.apptimer.LogService
+import com.github.snigle.apptimer.MainActivity
 import com.github.snigle.apptimer.ServicePopup
+import com.github.snigle.apptimer.composable.PopupCompose
+import com.github.snigle.apptimer.composable.TimerCompose
 import com.github.snigle.apptimer.domain.AppConfig
 import com.github.snigle.apptimer.domain.AppUsage
 import com.github.snigle.apptimer.domain.IAppUsage
 import com.github.snigle.apptimer.domain.Timer
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -39,23 +43,42 @@ class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
         apps[app.packageName] = app
     }
 
-    override fun DisplayTimer(timer: Timer) {
-        servicePopup.bubbleTimer = timer
+    @OptIn(DelicateCoroutinesApi::class)
+    override fun DisplayTimer(timer: Timer, onclick: () -> Unit) {
+        servicePopup.timerComponent = {
+            TimerCompose(timer = timer, onClick = {
+                Log.d(LogService, "click on timer")
+                onclick()
+            })
+        }
+
         GlobalScope.launch(Dispatchers.Main) {
             servicePopup.minimize()
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     override fun HidePopup() {
         GlobalScope.launch(Dispatchers.Main) {
             servicePopup.removeAll()
         }
     }
 
+    @OptIn(DelicateCoroutinesApi::class)
     fun openPopup(appConfig: AppConfig, app: AppUsage, callback: (duration: Long)->Unit) {
-        servicePopup.bubbleAppUsage = app
-        servicePopup.bubbleAppConfig = appConfig
-        servicePopup.bubbleTimerCallBack = callback
+
+        servicePopup.timerSettingComponent = {
+            PopupCompose(
+                appUsage = app,
+                appLabel = appConfig.name,
+                setTimer = callback,
+                settingsIntent = { ->
+                    // Start settings intent
+                    val intent = Intent(servicePopup.applicationContext, MainActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    servicePopup.startActivity(intent)
+                })
+        }
 
         GlobalScope.launch(Dispatchers.Main) {
             servicePopup.expand()

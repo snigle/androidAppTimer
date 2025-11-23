@@ -4,10 +4,13 @@ package com.github.snigle.apptimer.composable
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,12 +30,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.github.snigle.apptimer.domain.Timer
+import com.github.snigle.apptimer.domain.formatDurationInSeconds
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimerCompose(
-    modifier: Modifier = Modifier, timer: Timer
+    modifier: Modifier = Modifier, timer: Timer,
+    onClick: () -> Unit,
 ) {
 
     var timeLeft by remember { mutableStateOf((timer.GetTimeLeft() + 1000) / 1000) }
@@ -49,26 +54,27 @@ fun TimerCompose(
     val progress = timeLeft / (timer.duration.toFloat() / 1000)
 
 
-    return Column(
-        modifier = Modifier.background(Color.Transparent)
-    ) {
+    return Box(modifier = Modifier.clickable(
+        interactionSource = remember { MutableInteractionSource() },
+        indication = null,
+        onClick = onClick)) {
+        Column(
+            modifier = Modifier.background(Color.Transparent)
+        ) {
 
 
-        Box {
-            CircularCountdown(progress = progress, timeLeft = elapsedTime)
+            Box {
+                CircularCountdown(progress = progress, timeLeft = elapsedTime)
 
 
+            }
         }
     }
 }
 
 @Composable
 fun CircularCountdown(progress: Float, timeLeft: Long) {
-    var formatted = ""
-    if (timeLeft / 60 > 0) {
-        formatted += "${timeLeft / 60}m "
-    }
-    formatted += "${timeLeft - ((timeLeft / 60) * 60)}s"
+    val formatted = formatDurationInSeconds(timeLeft)
     val strokeWidth = 24.dp
     Box(
 //        modifier = Modifier.border(width = 2.dp, color = Color.Black, shape = CircleShape),
@@ -93,7 +99,7 @@ fun CircularCountdown(progress: Float, timeLeft: Long) {
             )
         }
         Text(
-            text = "$formatted",
+            text = formatted,
             textAlign = TextAlign.Center,
             fontWeight = FontWeight.Bold,
             fontSize = 20.sp
@@ -114,7 +120,7 @@ fun CircularCountdown(progress: Float, timeLeft: Long) {
 @Composable
 @Preview
 fun TimerComposePreview() {
-    return TimerCompose(timer = Timer(70 * 1000))
+    return TimerCompose(timer = Timer(70 * 1000), onClick = {})
 }
 
 @Composable
@@ -136,9 +142,9 @@ fun TimerCircle() {
 //@Composable
 //@Preview
 //fun PopupComposeExpiredPreview() {
-//    return PopupCompose(app = StartedApp.PreviewTimedoutApp,
+//    return PopupCompose(app = StartedApp.PreviewTimeoutApp,
 //        appLabel = "Facebook",
-//        setTimer = { _, _ -> },
+//        setimer = { _, _ -> },
 //        settingsIntent = { _ -> },
 //        close = {})
 //}

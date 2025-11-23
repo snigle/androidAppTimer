@@ -1,18 +1,19 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.plugin.compose")
 //    id("kotlinx-serialization")
 
 }
 
 android {
     namespace = "com.github.snigle.apptimer"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.github.snigle.apptimer"
         minSdk = 29
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
@@ -43,9 +44,6 @@ android {
     }
     buildFeatures {
         compose = true
-    }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.4.3"
     }
     packaging {
         resources {

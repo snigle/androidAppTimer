@@ -47,7 +47,7 @@ class uAppMonitoring(val appUsageRepo: IAppUsage, val appConfigRepo: IAppConfig)
                     if (runningApp.timer!!.IsPaused()) {
                         runningApp.timer!!.Start()
                         appUsageRepo.Save(runningApp)
-                        appUsageRepo.DisplayTimer(runningApp.timer!!)
+                        appUsageRepo.DisplayTimer(runningApp.timer!!, {AskTerminate(config, runningApp)})
                     }
                     Log.d(LogService, "TimeLeft: ${runningApp.timer!!.GetTimeLeft()}")
                     if (runningApp.timer!!.Timeout()) {
@@ -57,11 +57,20 @@ class uAppMonitoring(val appUsageRepo: IAppUsage, val appConfigRepo: IAppConfig)
                 }
 
                 if (config.monitor) {
-                    AskTimer(config, runningApp)
+                    InitTimer(config, runningApp)
+                    //AskTimer(config, runningApp)
                 }
 
             }
         }, 0, 1000)
+    }
+
+
+    fun InitTimer(appConfig: AppConfig, app: AppUsage) {
+        app.timer = com.github.snigle.apptimer.domain.Timer(appConfig.defaultDuration.inWholeMilliseconds)
+        app.timer!!.Start()
+        appUsageRepo.Save(app)
+        appUsageRepo.DisplayTimer(app.timer!!, {AskTerminate(appConfig, app)})
     }
 
     fun AskTimer(appConfig: AppConfig, app: AppUsage) {
@@ -73,19 +82,31 @@ class uAppMonitoring(val appUsageRepo: IAppUsage, val appConfigRepo: IAppConfig)
             app.timer = com.github.snigle.apptimer.domain.Timer(duration)
             app.timer!!.Start()
             appUsageRepo.Save(app)
-            appUsageRepo.DisplayTimer(app.timer!!)
+            appUsageRepo.DisplayTimer(app.timer!!, {AskTerminate(appConfig, app)})
             waiting.set(false)
         }
+    }
+
+    fun TimerSettings() {
+        val runningApp = appUsageRepo.FindRunning()
+        if (runningApp.IsZero()) {
+            return
+        }
+
+        val appConfig = appConfigRepo.Find(runningApp.packageName)
+        return AskTerminate(appConfig, runningApp);
     }
 
     fun AskTerminate(appConfig: AppConfig, app: AppUsage) {
         waiting.set(true)
         app.timer!!.Pause()
+        Log.d(LogService, "ask terminate for app ${app.packageName} ${app.timer!!.ElapseTime()/1000} ${app.timer!!.GetAggregateDuration()/1000}")
+
         appUsageRepo.AskTerminate(appConfig, app) { duration ->
             if (duration != 0L) {
                 app.timer!!.Extends(duration)
                 appUsageRepo.Save(app)
-                appUsageRepo.DisplayTimer(app.timer!!)
+                appUsageRepo.DisplayTimer(app.timer!!,  {AskTerminate(appConfig, app)})
             } else {
                 app.timer = null
                 appUsageRepo.Save(app)

@@ -8,7 +8,6 @@ import android.os.Bundle
 import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Button
@@ -20,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.ViewModelProvider
 import androidx.preference.PreferenceManager
 import com.github.snigle.apptimer.composable.AppConfigViewModel
 import com.github.snigle.apptimer.composable.AppConfigViewModelFactory
@@ -29,19 +29,19 @@ import com.github.snigle.apptimer.ui.theme.AppTimerTheme
 
 
 class MainActivity : ComponentActivity() {
-    private val viewModel: AppConfigViewModel by viewModels(factoryProducer = {
-        AppConfigViewModelFactory(
-            AppConfigRepo(
-                PreferenceManager.getDefaultSharedPreferences(application), packageManager
-            )
-        )
-    })
+    private lateinit var viewModel: AppConfigViewModel
     private var havePermission by mutableStateOf(false)
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val factory = AppConfigViewModelFactory(
+            AppConfigRepo(
+                PreferenceManager.getDefaultSharedPreferences(application), packageManager
+            )
+        )
+        viewModel = ViewModelProvider(this, factory)[AppConfigViewModel::class.java]
 
         this.havePermission = this.checkPermissions()
         if (!this.havePermission) {

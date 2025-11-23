@@ -2,6 +2,7 @@ package com.github.snigle.apptimer
 
 import android.content.Intent
 import android.util.Log
+import androidx.compose.runtime.Composable
 import androidx.preference.PreferenceManager
 import com.github.snigle.apptimer.composable.PopupCompose
 import com.github.snigle.apptimer.composable.TimerCompose
@@ -21,7 +22,9 @@ val LogService = "apptimer.popup"
 
 class ServicePopup : ExpandableBubbleService() {
 
-    var bubbleTimer: Timer? = null
+    var timerComponent: @Composable () -> Unit = {}
+    var timerSettingComponent: @Composable () -> Unit = {}
+
 
     override fun configBubble(): BubbleBuilder {
        // return BubbleBuilder(this).bubbleCompose { Text(text = "coucou") }
@@ -31,8 +34,9 @@ class ServicePopup : ExpandableBubbleService() {
 
             // or our sweetie, Jetpack Compose
             .bubbleCompose {
-                TimerCompose(timer = bubbleTimer!!)
+                timerComponent()
             }
+
 
             // set style for the bubble, fade animation by default
             .bubbleStyle(null)
@@ -70,24 +74,12 @@ class ServicePopup : ExpandableBubbleService() {
 //            .triggerClickablePerimeterPx(5f)
     }
 
-    var bubbleAppConfig: AppConfig? = null
-    var bubbleAppUsage: AppUsage? = null
-    var bubbleTimerCallBack: (duration: Long) -> Unit = {}
 
     override fun configExpandedBubble(): ExpandedBubbleBuilder {
 
 
         return ExpandedBubbleBuilder(this).expandedCompose {
-            PopupCompose(appUsage = this.bubbleAppUsage!!,
-                appLabel = this.bubbleAppConfig!!.name,
-                setTimer = bubbleTimerCallBack,
-                settingsIntent = { ->
-                    // Start settings intent
-                    val intent = Intent(applicationContext, MainActivity::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    startActivity(intent)
-                })
-
+            timerSettingComponent()
         }
             // handle key code
 
