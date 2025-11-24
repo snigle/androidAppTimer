@@ -1,5 +1,9 @@
 package com.github.snigle.apptimer.composable
 
+import android.content.pm.PackageManager
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmapOrNull
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
@@ -7,7 +11,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.github.snigle.apptimer.domain.AppConfig
 import com.github.snigle.apptimer.domain.IAppConfig
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class AppConfigViewModelFactory(private val appConfigRepo: IAppConfig) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -18,31 +24,52 @@ class AppConfigViewModelFactory(private val appConfigRepo: IAppConfig) : ViewMod
         throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
+
+data class AppConfigWithIcon(
+    val appConfig: AppConfig,
+    val icon: ImageBitmap?
+)
+
 class AppConfigViewModel(private val appConfigRepo: IAppConfig) : ViewModel() {
-    private val _apps = MutableLiveData<List<AppConfig>>(listOf(
-    ))
+    private val _apps = MutableLiveData<List<AppConfigWithIcon>>(emptyList())
+    val apps: LiveData<List<AppConfigWithIcon>> = _apps
 
-    val apps: LiveData<List<AppConfig>> = _apps
-
-    init {
-        // Initialize ViewModel with preferences
+    fun loadApps(packageManager: PackageManager) {
         viewModelScope.launch {
-            _apps.value = appConfigRepo.List()
+            val appConfigs = appConfigRepo.List()
+            // Post value with no icons first to show the list quickly
+            _apps.value = appConfigs.map { AppConfigWithIcon(it, null) }
+
+            // Then load icons in background
+            viewModelScope.launch(Dispatchers.IO) {
+                val appsWithIcons = appConfigs.map { config ->
+                    val icon = try {
+                        packageManager.getApplicationIcon(config.packageName).toBitmapOrNull()?.asImageBitmap()
+                    } catch (e: PackageManager.NameNotFoundException) {
+                        null
+                    }
+                    AppConfigWithIcon(config, icon)
+                }
+                withContext(Dispatchers.Main) {
+                    _apps.value = appsWithIcons
+                }
+            }
         }
     }
+
     fun updateAppStatus(index: Int, isMonitored: Boolean) {
-        val updatedApps = _apps.value?.mapIndexed { i, app ->
-            if (i == index) {
-                // Create copy to refresh view
-                val copy = app.copy(monitor = isMonitored)
-                // Save update in repository
-                appConfigRepo.Save(copy)
-                // Return the copy in the view
-                copy
-            } else app
-        }
-        updatedApps.let {
-            _apps.value = it
+        val currentApps = _apps.value
+        if (currentApps != null && index >= 0 && index < currentApps.size) {
+            val appToUpdate = currentApps[index]
+            val updatedConfig = appToUpdate.appConfig.copy(monitor = isMonitored)
+
+            // Save update in repository
+            appConfigRepo.Save(updatedConfig)
+
+            // Update the list in LiveData
+            val updatedList = currentApps.toMutableList()
+            updatedList[index] = appToUpdate.copy(appConfig = updatedConfig)
+            _apps.value = updatedList
         }
     }
 }
