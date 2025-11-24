@@ -22,7 +22,7 @@ class AppConfigRepo(val preferences: SharedPreferences, val packageManager: Pack
     }
 
     private fun getDefaultValue(packageName: String): Boolean {
-        return packageName.contains(Regex("(snapchat|facebook|instagram|tiktok|twitter|chrome.|firefox|game|netflix|youtube)")) &&
+        return packageName.contains(Regex("(snapchat|facebook|instagram|tiktok|twitter|chrome.|firefox|game|netflix|youtube|googlequicksearch)")) &&
                 !packageName.contains(Regex("(music|message|messenger|launcher|contact|appTimer)"))
     }
 
