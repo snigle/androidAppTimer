@@ -1,4 +1,6 @@
 *.iml
+app/my-release-key.keystore
+keystore.properties
 .gradle
 /local.properties
 /.idea/caches
