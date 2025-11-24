@@ -121,15 +121,14 @@ fun PopupCompose(
                             color = MaterialTheme.colorScheme.error
                         )
                         Button(
-                            onClick = { onSetTimer(null) },
+                            onClick = { onSetTimer(0) },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                         ) {
                             Text("Quitter $appLabel")
                         }
                     }
-                } else {
-                    // When there's still time, or no timer is set
+                }
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -149,7 +148,6 @@ fun PopupCompose(
                             ExtendButton(text = "30 min") { onSetTimer(30 * 60 * 1000) }
                         }
                     }
-                }
 
                 // Settings button (only if no timer is set)
                 if (!appUsage.HaveTimer()) {
