@@ -15,15 +15,21 @@ fun formatDurationInSeconds(seconds: Long): String {
     if (seconds < 0) {
         return "0s"
     }
-    val minutes = seconds / 60
+    val hours = seconds / 3600
+    val minutes = ((seconds % 3600) + seconds / 60) / 60
     val remainingSeconds = seconds % 60
-    return if (minutes > 0 && remainingSeconds > 0) {
-        "${minutes}m ${remainingSeconds}s"
-    } else if (minutes > 0) {
-        "${minutes}m"
-    } else {
-        "${remainingSeconds}s"
+
+    val timeParts = ArrayList<String>()
+
+    if (hours > 0) {
+        timeParts.add("${hours}h")
     }
+    if (minutes > 0) {
+        timeParts.add("${minutes}m")
+    }
+    timeParts.add("${remainingSeconds}s")
+
+   return timeParts.joinToString(" ")
 }
 
 data class Timer(var duration: Long) {

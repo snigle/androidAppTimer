@@ -18,6 +18,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
 
@@ -37,6 +38,27 @@ class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
             apps[packageName] = app
         }
         return app
+    }
+
+    private fun refreshDailyUsage(app: AppUsage) {
+        val usageStatsManager = servicePopup.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val calendar = Calendar.getInstance()
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfDay = calendar.timeInMillis
+        val endOfDay = System.currentTimeMillis()
+
+        // Use queryAndAggregateUsageStats for a more direct aggregation
+        val usageStatsMap = usageStatsManager.queryAndAggregateUsageStats(startOfDay, endOfDay)
+        val usageStat = usageStatsMap[app.packageName]
+
+        if (usageStat != null) {
+            app.dailyUsage = usageStat.totalTimeInForeground
+        } else {
+            app.dailyUsage = 0L // Reset if no stats are found
+        }
     }
 
     override fun Save(app: AppUsage) {
@@ -66,6 +88,8 @@ class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
 
     @OptIn(DelicateCoroutinesApi::class)
     fun openPopup(appConfig: AppConfig, app: AppUsage, callback: (duration: Long?)->Unit) {
+
+        refreshDailyUsage(app)
 
         servicePopup.timerSettingComponent = {
             PopupCompose(
@@ -138,9 +162,9 @@ class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
             context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
         // Set the time window for querying usage statistics
-        val oneHourAgo = currentTimestamp - (60 * 1000) // 1m ago
+        val fifteenSecondsAgo = currentTimestamp - (15 * 1000) // 15s ago
         val appList: Map<String, UsageStats> =
-            usageStatsManager.queryAndAggregateUsageStats(oneHourAgo, currentTimestamp)
+            usageStatsManager.queryAndAggregateUsageStats(fifteenSecondsAgo, currentTimestamp)
 
         var lastUsedApp = ""
         var lastTimeStamp = 0L

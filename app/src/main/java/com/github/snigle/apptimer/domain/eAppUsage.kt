@@ -17,7 +17,7 @@ interface IAppUsage {
     fun Save(app: AppUsage)
 }
 
-data class AppUsage(val packageName: String, var timer: Timer?) {
+data class AppUsage(val packageName: String, var timer: Timer?, var dailyUsage: Long = 0L) {
 
     fun IsZero(): Boolean {
         return packageName == ""
@@ -29,4 +29,3 @@ data class AppUsage(val packageName: String, var timer: Timer?) {
 
 
 }
-

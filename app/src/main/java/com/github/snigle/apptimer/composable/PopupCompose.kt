@@ -90,6 +90,21 @@ fun PopupCompose(
             tonalElevation = 8.dp
         ) {
             Box(modifier = Modifier.padding(vertical = 16.dp, horizontal = 16.dp)) {
+                // Daily usage top left
+                Column(modifier = Modifier.align(Alignment.TopStart)) {
+                    Text(
+                        text = "Usage aujourd'hui:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = formatDurationInSeconds(appUsage.dailyUsage / 1000),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+
                 // Settings Icon
                 IconButton(
                     onClick = {
@@ -219,7 +234,7 @@ private fun ExtendButton(text: String, modifier: Modifier = Modifier, onClick: (
 fun PopupComposePreview_NoTimer() {
     AppTimerTheme {
         PopupCompose(
-            appUsage = AppUsage("com.example.app", null),
+            appUsage = AppUsage("com.example.app", null, dailyUsage = 72 * 60 * 1000),
             appLabel = "Social App",
             setTimer = { },
             settingsIntent = { },
@@ -242,7 +257,7 @@ fun PopupComposePreview_WithTime() {
 
     AppTimerTheme {
         PopupCompose(
-            appUsage = AppUsage("com.example.app", timer),
+            appUsage = AppUsage("com.example.app", timer, dailyUsage = 72 * 60 * 1000),
             appLabel = "Social App",
             setTimer = { },
             settingsIntent = { },
@@ -255,7 +270,7 @@ fun PopupComposePreview_WithTime() {
 fun PopupComposePreview_TimeOut() {
     AppTimerTheme {
         PopupCompose(
-            appUsage = AppUsage("com.example.app", Timer(0)),
+            appUsage = AppUsage("com.example.app", Timer(0), dailyUsage = 72 * 60 * 1000),
             appLabel = "Social App",
             setTimer = { },
             settingsIntent = { },

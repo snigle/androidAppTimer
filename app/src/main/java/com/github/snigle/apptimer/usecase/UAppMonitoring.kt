@@ -47,6 +47,8 @@ class uAppMonitoring(
                 }
                 appUsageRepo.HidePopup()
                 waiting.set(false)
+                Log.d(LogService, "switch app from ${lastRunningApp.packageName}: ${runningApp.packageName}")
+
             }
             lastRunningAppRef.set(runningApp)
 
@@ -63,14 +65,14 @@ class uAppMonitoring(
                     appUsageRepo.Save(runningApp)
                     appUsageRepo.DisplayTimer(runningApp.timer!!, { AskTerminate(config, runningApp) })
                 }
-                Log.d(LogService, "TimeLeft: ${runningApp.timer!!.GetTimeLeft()}")
+                Log.d(LogService, "TimeLeft ${config.name}: ${runningApp.timer!!.GetTimeLeft()}")
                 if (runningApp.timer!!.Timeout()) {
                     AskTerminate(config, runningApp)
                 }
+            } else if (config.monitor) {
+                InitTimer(config, runningApp)
             } else {
-                if (config.monitor) {
-                    InitTimer(config, runningApp)
-                }
+                Log.d(LogService, "do nothing on app ${config.name} ${runningApp.packageName} ")
             }
 
             delay(5000L) // Main delay to reduce battery consumption
@@ -115,10 +117,10 @@ class uAppMonitoring(
         Log.d(LogService, "ask terminate for app ${app.packageName} ${app.timer!!.ElapseTime() / 1000} ${app.timer!!.GetAggregateDuration() / 1000}")
 
         appUsageRepo.AskTerminate(appConfig, app) { duration ->
+
+
             if (duration == null) {
-                app.timer?.Start()
-                appUsageRepo.Save(app)
-                appUsageRepo.DisplayTimer(app.timer!!, { AskTerminate(appConfig, app) })
+                // Canceled popup, do nothing. Let's main execution to restart the timer
             } else if (duration != 0L) {
                 app.timer!!.Extends(duration)
                 appUsageRepo.Save(app)
