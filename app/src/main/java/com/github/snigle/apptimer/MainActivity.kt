@@ -52,6 +52,8 @@ class MainActivity : ComponentActivity() {
         // Start background service
         startService()
 
+        val highlightPackageName = intent.getStringExtra("highlight_package")
+
         setContent {
             AppTimerTheme {
                 // A surface container using the 'background' color from the theme
@@ -67,7 +69,9 @@ class MainActivity : ComponentActivity() {
                         }
                     } else {
                         ApplicationList(
-                            viewModel = viewModel, packageManager
+                            viewModel = viewModel,
+                            packageManager = packageManager,
+                            highlightPackageName = highlightPackageName
                         )
                     }
                 }

@@ -74,8 +74,10 @@ class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
                 setTimer = callback,
                 settingsIntent = { ->
                     // Start settings intent
-                    val intent = Intent(servicePopup.applicationContext, MainActivity::class.java)
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    val intent = Intent(servicePopup.applicationContext, MainActivity::class.java).apply {
+                        putExtra("highlight_package", app.packageName)
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
                     servicePopup.startActivity(intent)
                 })
         }

@@ -2,6 +2,7 @@ package com.github.snigle.apptimer.composable
 
 import android.content.pm.PackageManager
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -23,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,22 +36,37 @@ import kotlin.time.Duration.Companion.minutes
 
 @Composable
 fun ApplicationList(
-    viewModel: AppConfigViewModel, packageManager: PackageManager
+    viewModel: AppConfigViewModel,
+    packageManager: PackageManager,
+    highlightPackageName: String?
 ) {
     val appsWithIcons by viewModel.apps.observeAsState(emptyList())
+    val listState = rememberLazyListState()
 
     LaunchedEffect(Unit) {
         viewModel.loadApps(packageManager)
     }
 
-    LazyColumn {
+    LaunchedEffect(appsWithIcons, highlightPackageName) {
+        if (highlightPackageName != null && appsWithIcons.isNotEmpty()) {
+            val index = appsWithIcons.indexOfFirst { it.appConfig.packageName == highlightPackageName }
+            if (index != -1) {
+                listState.animateScrollToItem(index)
+            }
+        }
+    }
+
+    LazyColumn(state = listState) {
         itemsIndexed(appsWithIcons) { index, appWithIcon ->
+            val isHighlighted = appWithIcon.appConfig.packageName == highlightPackageName
             Application(
                 applicationName = appWithIcon.appConfig.name,
                 packageName = appWithIcon.appConfig.packageName,
                 appIcon = appWithIcon.icon,
                 checked = appWithIcon.appConfig.monitor,
-                onToggle = { _, checked -> viewModel.updateAppStatus(index, checked) })
+                onToggle = { _, checked -> viewModel.updateAppStatus(index, checked) },
+                isHighlighted = isHighlighted
+            )
         }
     }
 }
@@ -60,9 +78,20 @@ fun Application(
     appIcon: ImageBitmap?,
     checked: Boolean,
     onToggle: (packageName: String, enabled: Boolean) -> Unit,
+    isHighlighted: Boolean,
     modifier: Modifier = Modifier
 ) {
-    Row(modifier.height(64.dp)) {
+    val backgroundColor = if (isHighlighted) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+    } else {
+        Color.Transparent
+    }
+
+    Row(
+        modifier = modifier
+            .height(64.dp)
+            .background(backgroundColor)
+    ) {
         Box(
             modifier = Modifier.size(64.dp),
             contentAlignment = Alignment.Center
@@ -110,7 +139,9 @@ fun ApplicationPreview() {
                 packageName = appWithIcon.appConfig.packageName,
                 appIcon = appWithIcon.icon,
                 checked = appWithIcon.appConfig.monitor,
-                onToggle = { _, _ -> })
+                onToggle = { _, _ -> },
+                isHighlighted = true
+            )
         }
 
     }
