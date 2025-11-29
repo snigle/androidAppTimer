@@ -6,76 +6,68 @@ import com.github.snigle.apptimer.domain.AppConfig
 import com.github.snigle.apptimer.domain.AppUsage
 import com.github.snigle.apptimer.domain.IAppConfig
 import com.github.snigle.apptimer.domain.IAppUsage
-import com.github.snigle.apptimer.domain.IScreenManager
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import java.util.concurrent.atomic.AtomicReference
 
 class uAppMonitoring(
     private val appUsageRepo: IAppUsage,
-    private val appConfigRepo: IAppConfig,
-    private val screenManager: IScreenManager
+    private val appConfigRepo: IAppConfig
 ) {
 
     var lastRunningAppRef = AtomicReference<AppUsage?>()
     var waiting = AtomicReference<Boolean>(false)
     suspend fun MonitorRunningApp() {
 
-        while (true) {
-            // If screen is off, pause any running timer to save battery
-            if (screenManager.isOff()) {
+        coroutineScope {
+            while (isActive) {
+                val runningApp = appUsageRepo.FindRunning()
+                if (runningApp.IsZero()) {
+                    delay(5000L)
+                    continue
+                }
+
                 val lastRunningApp = lastRunningAppRef.get()
-                if (lastRunningApp != null && lastRunningApp.HaveTimer() && !lastRunningApp.timer!!.IsPaused()) {
-                    lastRunningApp.timer!!.Pause()
-                    appUsageRepo.Save(lastRunningApp)
-                    Log.d(LogService, "Screen is off, timer paused for ${lastRunningApp.packageName}")
+                if (lastRunningApp != null && lastRunningApp.packageName != runningApp.packageName) {
+                    if (lastRunningApp.HaveTimer()) {
+                        lastRunningApp.timer!!.Pause()
+                        appUsageRepo.Save(lastRunningApp)
+                    }
+                    appUsageRepo.HidePopup()
+                    waiting.set(false)
+                    Log.d(LogService, "switch app from ${lastRunningApp.packageName}: ${runningApp.packageName}")
+
                 }
-                delay(15000L) // Check less frequently when screen is off
-                continue
-            }
+                lastRunningAppRef.set(runningApp)
 
-            val runningApp = appUsageRepo.FindRunning()
-            if (runningApp.IsZero()) {
-                delay(5000L)
-                continue
-            }
-
-            val lastRunningApp = lastRunningAppRef.get()
-            if (lastRunningApp != null && lastRunningApp.packageName != runningApp.packageName) {
-                if (lastRunningApp.HaveTimer()) {
-                    lastRunningApp.timer!!.Pause()
-                    appUsageRepo.Save(lastRunningApp)
+                // Lock if popup is displayed
+                if (waiting.get()) {
+                    delay(1000L) // Check more frequently when waiting for user input
+                    continue
                 }
-                appUsageRepo.HidePopup()
-                waiting.set(false)
-                Log.d(LogService, "switch app from ${lastRunningApp.packageName}: ${runningApp.packageName}")
 
-            }
-            lastRunningAppRef.set(runningApp)
-
-            // Lock if popup is displayed
-            if (waiting.get()) {
-                delay(1000L) // Check more frequently when waiting for user input
-                continue
-            }
-
-            val config = appConfigRepo.Find(runningApp.packageName)
-            if (runningApp.HaveTimer()) {
-                if (runningApp.timer!!.IsPaused()) {
-                    runningApp.timer!!.Start()
-                    appUsageRepo.Save(runningApp)
-                    appUsageRepo.DisplayTimer(runningApp.timer!!, { AskTerminate(config, runningApp) })
+                val config = appConfigRepo.Find(runningApp.packageName)
+                if (runningApp.HaveTimer()) {
+                    if (runningApp.timer!!.IsPaused()) {
+                        runningApp.timer!!.Start()
+                        appUsageRepo.Save(runningApp)
+                        appUsageRepo.DisplayTimer(runningApp.timer!!, { AskTerminate(config, runningApp) })
+                    }
+                    Log.d(LogService, "TimeLeft ${config.name}: ${runningApp.timer!!.GetTimeLeft()}")
+                    if (runningApp.timer!!.Timeout()) {
+                        AskTerminate(config, runningApp)
+                    }
+                } else if (config.monitor) {
+                    InitTimer(config, runningApp)
+                } else {
+                    Log.d(LogService, "do nothing on app ${config.name} ${runningApp.packageName} ")
                 }
-                Log.d(LogService, "TimeLeft ${config.name}: ${runningApp.timer!!.GetTimeLeft()}")
-                if (runningApp.timer!!.Timeout()) {
-                    AskTerminate(config, runningApp)
-                }
-            } else if (config.monitor) {
-                InitTimer(config, runningApp)
-            } else {
-                Log.d(LogService, "do nothing on app ${config.name} ${runningApp.packageName} ")
-            }
 
-            delay(5000L) // Main delay to reduce battery consumption
+                delay(5000L) // Main delay to reduce battery consumption
+            }
+            Log.d(LogService, "monitoring stopped")
+
         }
     }
 
