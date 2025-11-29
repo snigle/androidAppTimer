@@ -1,23 +1,22 @@
 package com.github.snigle.apptimer
 
-import android.content.Intent
 import android.util.Log
 import android.view.KeyEvent
 import androidx.compose.runtime.Composable
 import androidx.preference.PreferenceManager
-import com.github.snigle.apptimer.composable.PopupCompose
-import com.github.snigle.apptimer.composable.TimerCompose
-import com.github.snigle.apptimer.domain.AppConfig
-import com.github.snigle.apptimer.domain.AppUsage
-import com.github.snigle.apptimer.domain.Timer
 import com.github.snigle.apptimer.repository.AppConfigRepo
 import com.github.snigle.apptimer.repository.AppUsageRepo
+import com.github.snigle.apptimer.repository.ScreenManager
 import com.github.snigle.apptimer.usecase.uAppMonitoring
 import com.torrydo.floatingbubbleview.CloseBubbleBehavior
 import com.torrydo.floatingbubbleview.FloatingBubbleListener
 import com.torrydo.floatingbubbleview.service.expandable.BubbleBuilder
 import com.torrydo.floatingbubbleview.service.expandable.ExpandableBubbleService
 import com.torrydo.floatingbubbleview.service.expandable.ExpandedBubbleBuilder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 val LogService = "apptimer.popup"
 
@@ -25,6 +24,9 @@ class ServicePopup : ExpandableBubbleService() {
 
     var timerComponent: @Composable () -> Unit = {}
     var timerSettingComponent: @Composable () -> Unit = {}
+
+    private val serviceJob = SupervisorJob()
+    private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
 
 
     override fun configBubble(): BubbleBuilder {
@@ -108,15 +110,26 @@ class ServicePopup : ExpandableBubbleService() {
         super.onCreate()
         Log.d(LogService, "restart service")
 
-        uAppMonitoring(
-            AppUsageRepo(servicePopup = this),
-            AppConfigRepo(
+        serviceScope.launch {
+            val appUsageRepo = AppUsageRepo(servicePopup = this@ServicePopup)
+            val appConfigRepo = AppConfigRepo(
                 PreferenceManager.getDefaultSharedPreferences(applicationContext),
                 applicationContext.packageManager
             )
-        ).MonitorRunningApp()
+            val screenManagerRepo = ScreenManager(applicationContext)
+
+            uAppMonitoring(
+                appUsageRepo,
+                appConfigRepo,
+                screenManagerRepo
+            ).MonitorRunningApp()
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceJob.cancel()
     }
 
 
 }
-

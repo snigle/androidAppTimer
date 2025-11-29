@@ -48,4 +48,4 @@ We may update our Privacy Policy from time to time. We will notify you of any ch
 
 ## 8. Contact Us
 
-If you have any questions or suggestions about this Privacy Policy, do not hesitate to contact on github.
+If you have any questions or suggestions about this Privacy Policy, do not hesitate to contact us by creating an issue on our [GitHub repository](https://github.com/snigle/apptimer/issues).
