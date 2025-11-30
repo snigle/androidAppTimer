@@ -8,6 +8,9 @@ import androidx.compose.runtime.Composable
 import androidx.preference.PreferenceManager
 import com.github.snigle.apptimer.repository.AppConfigRepo
 import com.github.snigle.apptimer.repository.AppUsageRepo
+import com.github.snigle.apptimer.repository.ScreenManagerRepo
+import com.github.snigle.apptimer.repository.connectors.LocalStorage
+import com.github.snigle.apptimer.repository.connectors.ScreenStateReceiver
 import com.github.snigle.apptimer.usecase.uAppMonitoring
 import com.torrydo.floatingbubbleview.CloseBubbleBehavior
 import com.torrydo.floatingbubbleview.FloatingBubbleListener
@@ -29,10 +32,8 @@ class ServicePopup : ExpandableBubbleService() {
 
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
-    private var monitoringJob: Job? = null
-
-    private lateinit var screenStateReceiver: ScreenStateReceiver
-
+    private var screenStateReceiver : ScreenStateReceiver? =null
+    private var localStorage = LocalStorage()
 
     override fun configBubble(): BubbleBuilder {
         // return BubbleBuilder(this).bubbleCompose { Text(text = "coucou") }
@@ -113,52 +114,41 @@ class ServicePopup : ExpandableBubbleService() {
 
     override fun onCreate() {
         super.onCreate()
+        screenStateReceiver = ScreenStateReceiver(this, {this.startMonitoring()})
+
         Log.d(LogService, "restart service")
 
         startMonitoring()
 
-        // Register screen state receiver
-        screenStateReceiver = ScreenStateReceiver(
-            onScreenOn = { startMonitoring() },
-            onScreenOff = { stopMonitoring() }
-        )
-        val intentFilter = IntentFilter().apply {
-            addAction(Intent.ACTION_SCREEN_ON)
-            addAction(Intent.ACTION_SCREEN_OFF)
-        }
-        registerReceiver(screenStateReceiver, intentFilter)
+
     }
 
     fun startMonitoring() {
-        if (monitoringJob?.isActive == true) {
-            Log.d(LogService, "monitoring already running")
-            return
-        }
+
         Log.d(LogService, "Start monitoring")
-        monitoringJob = serviceScope.launch {
-            val appUsageRepo = AppUsageRepo(servicePopup = this@ServicePopup)
+        serviceScope.launch {
+            val appUsageRepo = AppUsageRepo(servicePopup = this@ServicePopup, this@ServicePopup.localStorage)
             val appConfigRepo = AppConfigRepo(
                 PreferenceManager.getDefaultSharedPreferences(applicationContext),
                 applicationContext.packageManager
             )
+            val screenManagerRepo = ScreenManagerRepo(
+                this@ServicePopup.screenStateReceiver!!)
 
             uAppMonitoring(
                 appUsageRepo,
                 appConfigRepo,
+                screenManagerRepo,
             ).MonitorRunningApp()
         }
     }
 
-    fun stopMonitoring() {
-        Log.d(LogService, "Stop monitoring")
-        monitoringJob?.cancel()
-        monitoringJob = null
-    }
+
 
     override fun onDestroy() {
         super.onDestroy()
         serviceJob.cancel()
-        unregisterReceiver(screenStateReceiver)
+        screenStateReceiver?.Destroy()
     }
 
 

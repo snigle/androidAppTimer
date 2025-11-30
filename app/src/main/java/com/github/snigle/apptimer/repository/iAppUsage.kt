@@ -4,7 +4,9 @@ import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.github.snigle.apptimer.LogService
 import com.github.snigle.apptimer.MainActivity
 import com.github.snigle.apptimer.ServicePopup
@@ -14,28 +16,22 @@ import com.github.snigle.apptimer.domain.AppConfig
 import com.github.snigle.apptimer.domain.AppUsage
 import com.github.snigle.apptimer.domain.IAppUsage
 import com.github.snigle.apptimer.domain.Timer
+import com.github.snigle.apptimer.repository.connectors.LocalStorage
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
+class AppUsageRepo(private val servicePopup: ServicePopup, private val localStorage: LocalStorage) : IAppUsage {
 
-    // Local storage
-    private val apps = mutableMapOf<String, AppUsage>()
-
-
-    init {
-
-    }
-
+    @RequiresApi(Build.VERSION_CODES.Q)
     override fun FindRunning(): AppUsage {
         val packageName = getLastStartedApp(servicePopup)
-        var app = apps[packageName]
+        var app = localStorage.GetApp(packageName)
         if ( app == null || (app.timer != null && app.timer!!.Expired())) {
             app = AppUsage(packageName ,null)
-            apps[packageName] = app
+            localStorage.SaveApp(app)
         }
         return app
     }
@@ -62,7 +58,7 @@ class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
     }
 
     override fun Save(app: AppUsage) {
-        apps[app.packageName] = app
+        localStorage.SaveApp(app)
     }
 
     @OptIn(DelicateCoroutinesApi::class)
@@ -86,6 +82,7 @@ class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     @OptIn(DelicateCoroutinesApi::class)
     fun openPopup(appConfig: AppConfig, app: AppUsage, callback: (duration: Long?)->Unit) {
 
@@ -111,6 +108,7 @@ class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     override fun AskDuration(appConfig: AppConfig, app: AppUsage, callback: (duration: Long) -> Unit)
     {
         Log.d(LogService, "ask duration for app ${app.packageName}")
@@ -125,6 +123,7 @@ class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     override fun AskTerminate(appConfig: AppConfig, app: AppUsage, callback: (duration: Long?) -> Unit) {
         Log.d(LogService, "ask terminate for app ${app.packageName}")
         openPopup(appConfig, app) { duration ->
@@ -156,13 +155,14 @@ class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
 
 
 
+    @RequiresApi(Build.VERSION_CODES.Q)
     private fun getLastStartedApp(context: Context): String {
         val currentTimestamp = System.currentTimeMillis()
         val usageStatsManager =
             context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
 
         // Set the time window for querying usage statistics
-        val fifteenSecondsAgo = currentTimestamp - (15 * 1000) // 15s ago
+        val fifteenSecondsAgo = currentTimestamp - (60 * 1000) // 1mn ago
         val appList: Map<String, UsageStats> =
             usageStatsManager.queryAndAggregateUsageStats(fifteenSecondsAgo, currentTimestamp)
 
@@ -170,7 +170,7 @@ class AppUsageRepo(private val servicePopup: ServicePopup) : IAppUsage {
         var lastTimeStamp = 0L
 
         for ((packageName, usageStats) in appList) {
-            //Log.d(LogService)
+            // Use lastTimeVisible for more accuracy on Android Q+
             if (usageStats.lastTimeUsed > lastTimeStamp) {
                 lastTimeStamp = usageStats.lastTimeUsed
                 lastUsedApp = packageName

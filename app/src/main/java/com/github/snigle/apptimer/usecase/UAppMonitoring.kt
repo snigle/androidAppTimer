@@ -6,6 +6,7 @@ import com.github.snigle.apptimer.domain.AppConfig
 import com.github.snigle.apptimer.domain.AppUsage
 import com.github.snigle.apptimer.domain.IAppConfig
 import com.github.snigle.apptimer.domain.IAppUsage
+import com.github.snigle.apptimer.domain.IScreenManager
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -13,7 +14,8 @@ import java.util.concurrent.atomic.AtomicReference
 
 class uAppMonitoring(
     private val appUsageRepo: IAppUsage,
-    private val appConfigRepo: IAppConfig
+    private val appConfigRepo: IAppConfig,
+    private val screenManagerRepo: IScreenManager
 ) {
 
     var lastRunningAppRef = AtomicReference<AppUsage?>()
@@ -21,9 +23,13 @@ class uAppMonitoring(
     suspend fun MonitorRunningApp() {
 
         coroutineScope {
-            while (isActive) {
+            while (true) {
+                val screenIsClosed = screenManagerRepo.IsDisabled()
                 val runningApp = appUsageRepo.FindRunning()
                 if (runningApp.IsZero()) {
+                    if (screenIsClosed) {
+                        break
+                    }
                     delay(5000L)
                     continue
                 }
@@ -64,6 +70,9 @@ class uAppMonitoring(
                     Log.d(LogService, "do nothing on app ${config.name} ${runningApp.packageName} ")
                 }
 
+                if (screenIsClosed) {
+                    break
+                }
                 delay(5000L) // Main delay to reduce battery consumption
             }
             Log.d(LogService, "monitoring stopped")
