@@ -9,11 +9,14 @@ import androidx.core.content.ContextCompat
 import com.github.snigle.apptimer.LogService
 import com.github.snigle.apptimer.ServicePopup
 
-class ScreenStateReceiver(private val servicePopup: ServicePopup,onScreenOn : ()->Unit) {
+class ScreenStateReceiver(private val servicePopup: ServicePopup) {
     private var screenStateReceiver : ScreenStateReceiverBroadcaster? = null
     public var screenOn = true
 
-    init {
+    fun RegisterReceiver(onScreenOn : ()->Unit) {
+        if (this.screenStateReceiver != null ){
+            return
+        }
         this.screenStateReceiver = ScreenStateReceiverBroadcaster(
             {
                 this.screenOn = true
@@ -25,13 +28,15 @@ class ScreenStateReceiver(private val servicePopup: ServicePopup,onScreenOn : ()
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_SCREEN_OFF)
         }
-        servicePopup.registerReceiver(screenStateReceiver, intentFilter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        servicePopup.registerReceiver(screenStateReceiver, intentFilter)
         Log.d(LogService, "register screen state receiver")
     }
 
     fun Destroy() {
+        if (this.screenStateReceiver != null) {
             servicePopup.unregisterReceiver(this.screenStateReceiver)
             Log.d(LogService, "register screen state receiver")
+        }
     }
 }
 

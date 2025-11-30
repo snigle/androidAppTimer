@@ -30,10 +30,10 @@ class ServicePopup : ExpandableBubbleService() {
     var timerComponent: @Composable () -> Unit = {}
     var timerSettingComponent: @Composable () -> Unit = {}
 
-    private val serviceJob = SupervisorJob()
-    private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
-    private var screenStateReceiver : ScreenStateReceiver? =null
-    private var localStorage = LocalStorage()
+    private val screenStateReceiver = ScreenStateReceiver(this)
+    private val localStorage = LocalStorage()
+    private lateinit var configRepo : AppConfigRepo
+    private lateinit var usecase : uAppMonitoring
 
     override fun configBubble(): BubbleBuilder {
         // return BubbleBuilder(this).bubbleCompose { Text(text = "coucou") }
@@ -114,41 +114,27 @@ class ServicePopup : ExpandableBubbleService() {
 
     override fun onCreate() {
         super.onCreate()
-        screenStateReceiver = ScreenStateReceiver(this, {this.startMonitoring()})
 
-        Log.d(LogService, "restart service")
+        configRepo = AppConfigRepo(
+            PreferenceManager.getDefaultSharedPreferences(applicationContext),
+            applicationContext.packageManager
+        )
+        usecase = uAppMonitoring(
+                AppUsageRepo(servicePopup = this@ServicePopup, this@ServicePopup.localStorage, configRepo),
+        configRepo,
+        ScreenManagerRepo(
+            this@ServicePopup.screenStateReceiver),
+        )
 
-        startMonitoring()
-
+        usecase.MonitorRunningApp()
+        screenStateReceiver.RegisterReceiver { usecase.MonitorRunningApp() }
 
     }
-
-    fun startMonitoring() {
-
-        Log.d(LogService, "Start monitoring")
-        serviceScope.launch {
-            val appUsageRepo = AppUsageRepo(servicePopup = this@ServicePopup, this@ServicePopup.localStorage)
-            val appConfigRepo = AppConfigRepo(
-                PreferenceManager.getDefaultSharedPreferences(applicationContext),
-                applicationContext.packageManager
-            )
-            val screenManagerRepo = ScreenManagerRepo(
-                this@ServicePopup.screenStateReceiver!!)
-
-            uAppMonitoring(
-                appUsageRepo,
-                appConfigRepo,
-                screenManagerRepo,
-            ).MonitorRunningApp()
-        }
-    }
-
 
 
     override fun onDestroy() {
         super.onDestroy()
-        serviceJob.cancel()
-        screenStateReceiver?.Destroy()
+        screenStateReceiver.Destroy()
     }
 
 

@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.github.snigle.apptimer.domain.AppConfig
 import com.github.snigle.apptimer.domain.AppUsage
 import com.github.snigle.apptimer.domain.Timer
 import com.github.snigle.apptimer.domain.formatDurationInSeconds
@@ -234,7 +235,7 @@ private fun ExtendButton(text: String, modifier: Modifier = Modifier, onClick: (
 fun PopupComposePreview_NoTimer() {
     AppTimerTheme {
         PopupCompose(
-            appUsage = AppUsage("com.example.app", null, dailyUsage = 72 * 60 * 1000),
+            appUsage = AppUsage("com.example.app", AppConfig("com.example.app", "App", true),null, dailyUsage = 72 * 60 * 1000),
             appLabel = "Social App",
             setTimer = { },
             settingsIntent = { },
@@ -257,7 +258,7 @@ fun PopupComposePreview_WithTime() {
 
     AppTimerTheme {
         PopupCompose(
-            appUsage = AppUsage("com.example.app", timer, dailyUsage = 72 * 60 * 1000),
+            appUsage = AppUsage("com.example.app",AppConfig("com.example.app", "App", true), timer, dailyUsage = 72 * 60 * 1000),
             appLabel = "Social App",
             setTimer = { },
             settingsIntent = { },
@@ -270,7 +271,7 @@ fun PopupComposePreview_WithTime() {
 fun PopupComposePreview_TimeOut() {
     AppTimerTheme {
         PopupCompose(
-            appUsage = AppUsage("com.example.app", Timer(0), dailyUsage = 72 * 60 * 1000),
+            appUsage = AppUsage("com.example.app", AppConfig("com.example.app", "App", true),Timer(0), dailyUsage = 72 * 60 * 1000),
             appLabel = "Social App",
             setTimer = { },
             settingsIntent = { },

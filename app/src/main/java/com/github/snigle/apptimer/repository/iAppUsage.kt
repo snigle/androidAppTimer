@@ -21,23 +21,46 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.Calendar
+import kotlin.coroutines.resume
 
-class AppUsageRepo(private val servicePopup: ServicePopup, private val localStorage: LocalStorage) : IAppUsage {
+class AppUsageRepo(private val servicePopup: ServicePopup, private val localStorage: LocalStorage, private val appConfigRepo: AppConfigRepo) :
+    IAppUsage {
+
+    init {
+
+    }
 
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun FindRunning(): AppUsage {
         val packageName = getLastStartedApp(servicePopup)
         var app = localStorage.GetApp(packageName)
-        if ( app == null || (app.timer != null && app.timer!!.Expired())) {
-            app = AppUsage(packageName ,null)
+        if (app == null || (app.timer != null && app.timer!!.Expired())) {
+            app = AppUsage(packageName, appConfigRepo.Find(packageName), null)
+            localStorage.SaveApp(app)
+        }
+        if (app.configDate.time < System.currentTimeMillis() - 60 * 60) {
+            app.UpdateConfig(appConfigRepo.Find(packageName))
             localStorage.SaveApp(app)
         }
         return app
     }
 
+    override fun ListWithTimer(): ArrayList<AppUsage> {
+        val apps = localStorage.GetList()
+        val result = ArrayList<AppUsage>()
+        for (app in apps) {
+            if (app.HaveTimer() && app.timer!!.IsRunning()) {
+                result.add(app)
+            }
+        }
+        return result
+    }
+
     private fun refreshDailyUsage(app: AppUsage) {
-        val usageStatsManager = servicePopup.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+        val usageStatsManager =
+            servicePopup.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val calendar = Calendar.getInstance()
         calendar.set(Calendar.HOUR_OF_DAY, 0)
         calendar.set(Calendar.MINUTE, 0)
@@ -75,6 +98,39 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
         }
     }
 
+    override suspend fun DisplayPopup(
+        app: AppUsage
+    ): Long? {
+        Log.d(LogService, "open popup for app ${app.packageName}")
+        return suspendCancellableCoroutine { continuation ->
+            openPopup(app.config, app) { duration ->
+                servicePopup.removeAll()
+
+                when (duration) {
+                    null -> {
+                        Log.d(LogService, "received back for app ${app.packageName}")
+                    }
+                    0L -> {
+                        Log.d(LogService, "received close for app ${app.packageName}")
+                        val intent = Intent(Intent.ACTION_MAIN)
+                        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        intent.addCategory(Intent.CATEGORY_HOME)
+                        servicePopup.startActivity(intent)
+                    }
+                    else -> {
+                        Log.d(
+                            LogService,
+                            "received duration ${duration / 1000}s for app ${app.packageName}"
+                        )
+                    }
+                }
+
+                // Resume the coroutine with the duration (which can be null)
+                continuation.resume(duration)
+            }
+        }
+    }
+
     @OptIn(DelicateCoroutinesApi::class)
     override fun HidePopup() {
         GlobalScope.launch(Dispatchers.Main) {
@@ -84,7 +140,7 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
 
     @RequiresApi(Build.VERSION_CODES.Q)
     @OptIn(DelicateCoroutinesApi::class)
-    fun openPopup(appConfig: AppConfig, app: AppUsage, callback: (duration: Long?)->Unit) {
+    fun openPopup(appConfig: AppConfig, app: AppUsage, callback: (duration: Long?) -> Unit) {
 
         refreshDailyUsage(app)
 
@@ -95,10 +151,11 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
                 setTimer = callback,
                 settingsIntent = { ->
                     // Start settings intent
-                    val intent = Intent(servicePopup.applicationContext, MainActivity::class.java).apply {
-                        putExtra("highlight_package", app.packageName)
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
+                    val intent =
+                        Intent(servicePopup.applicationContext, MainActivity::class.java).apply {
+                            putExtra("highlight_package", app.packageName)
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
                     servicePopup.startActivity(intent)
                 })
         }
@@ -109,8 +166,11 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
-    override fun AskDuration(appConfig: AppConfig, app: AppUsage, callback: (duration: Long) -> Unit)
-    {
+    override fun AskDuration(
+        appConfig: AppConfig,
+        app: AppUsage,
+        callback: (duration: Long) -> Unit
+    ) {
         Log.d(LogService, "ask duration for app ${app.packageName}")
         openPopup(appConfig, app) { duration ->
             var duration = duration
@@ -124,7 +184,11 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
-    override fun AskTerminate(appConfig: AppConfig, app: AppUsage, callback: (duration: Long?) -> Unit) {
+    override fun AskTerminate(
+        appConfig: AppConfig,
+        app: AppUsage,
+        callback: (duration: Long?) -> Unit
+    ) {
         Log.d(LogService, "ask terminate for app ${app.packageName}")
         openPopup(appConfig, app) { duration ->
             servicePopup.removeAll()
@@ -152,7 +216,6 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
             callback(duration)
         }
     }
-
 
 
     @RequiresApi(Build.VERSION_CODES.Q)
