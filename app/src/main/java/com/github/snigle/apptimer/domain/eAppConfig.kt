@@ -11,6 +11,6 @@ interface IAppConfig {
     fun Save(app: AppConfig)
 }
 
-data class AppConfig(val packageName: String, val name: String, var monitor : Boolean, var defaultDuration: Duration = 15.seconds ) {
+data class AppConfig(val packageName: String, val name: String, var monitor : Boolean, var defaultDuration: Duration = 5.minutes ) {
 
 }
