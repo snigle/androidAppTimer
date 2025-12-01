@@ -1,8 +1,5 @@
 package com.github.snigle.apptimer
 
-import android.content.Intent
-import android.content.IntentFilter
-import android.util.Log
 import android.view.KeyEvent
 import androidx.compose.runtime.Composable
 import androidx.preference.PreferenceManager
@@ -11,17 +8,12 @@ import com.github.snigle.apptimer.repository.AppUsageRepo
 import com.github.snigle.apptimer.repository.ScreenManagerRepo
 import com.github.snigle.apptimer.repository.connectors.LocalStorage
 import com.github.snigle.apptimer.repository.connectors.ScreenStateReceiver
-import com.github.snigle.apptimer.usecase.uAppMonitoring
+import com.github.snigle.apptimer.usecase.AppMonitoring
 import com.torrydo.floatingbubbleview.CloseBubbleBehavior
 import com.torrydo.floatingbubbleview.FloatingBubbleListener
 import com.torrydo.floatingbubbleview.service.expandable.BubbleBuilder
 import com.torrydo.floatingbubbleview.service.expandable.ExpandableBubbleService
 import com.torrydo.floatingbubbleview.service.expandable.ExpandedBubbleBuilder
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 
 val LogService = "apptimer.popup"
 
@@ -33,7 +25,7 @@ class ServicePopup : ExpandableBubbleService() {
     private val screenStateReceiver = ScreenStateReceiver(this)
     private val localStorage = LocalStorage()
     private lateinit var configRepo : AppConfigRepo
-    private lateinit var usecase : uAppMonitoring
+    private lateinit var usecase : AppMonitoring
 
     override fun configBubble(): BubbleBuilder {
         // return BubbleBuilder(this).bubbleCompose { Text(text = "coucou") }
@@ -119,9 +111,8 @@ class ServicePopup : ExpandableBubbleService() {
             PreferenceManager.getDefaultSharedPreferences(applicationContext),
             applicationContext.packageManager
         )
-        usecase = uAppMonitoring(
+        usecase = AppMonitoring(
                 AppUsageRepo(servicePopup = this@ServicePopup, this@ServicePopup.localStorage, configRepo),
-        configRepo,
         ScreenManagerRepo(
             this@ServicePopup.screenStateReceiver),
         )
