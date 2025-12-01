@@ -11,20 +11,18 @@ interface IAppUsage {
 
     fun ListWithTimer(): ArrayList<AppUsage>
 
-    fun AskDuration(appConfig: AppConfig, app: AppUsage, callback: (duration: Long) -> Unit)
-    fun AskTerminate(appConfig: AppConfig, app: AppUsage, callback: (duration: Long?) -> Unit)
-
-    fun DisplayTimer(timer: Timer, onclick: () -> Unit)
+    fun DisplayTimer(app: AppUsage, onclick: () -> Unit)
 
     suspend fun DisplayPopup(app: AppUsage): Long?
 
 
-    fun HidePopup()
-    fun Save(app: AppUsage)
+    fun HidePopup(app: AppUsage)
 }
 
 data class AppUsage(val packageName: String, var config: AppConfig, var timer: Timer?, var dailyUsage: Long = 0L) {
     var configDate: Date = Date()
+    var popupDisplayed = false
+    var timerDisplayed = false
 
     fun UpdateConfig(config: AppConfig) {
         this.config = config

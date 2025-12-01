@@ -35,6 +35,9 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun FindRunning(): AppUsage {
         val packageName = getLastStartedApp(servicePopup)
+        if (packageName == "") {
+            return AppUsage("", AppConfig("", "", false), null)
+        }
         var app = localStorage.GetApp(packageName)
         if (app == null || (app.timer != null && app.timer!!.Expired())) {
             app = AppUsage(packageName, appConfigRepo.Find(packageName), null)
@@ -80,19 +83,20 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
         }
     }
 
-    override fun Save(app: AppUsage) {
-        localStorage.SaveApp(app)
-    }
-
     @OptIn(DelicateCoroutinesApi::class)
-    override fun DisplayTimer(timer: Timer, onclick: () -> Unit) {
+    override fun DisplayTimer(app: AppUsage, onclick: () -> Unit) {
+        if (app.timer == null) {
+            return
+        }
         servicePopup.timerComponent = {
-            TimerCompose(timer = timer, onClick = {
+            TimerCompose(timer = app.timer!!, onClick = {
                 Log.d(LogService, "click on timer")
                 onclick()
             })
         }
 
+        app.timerDisplayed = true
+        app.popupDisplayed = false
         GlobalScope.launch(Dispatchers.Main) {
             servicePopup.minimize()
         }
@@ -102,6 +106,7 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
         app: AppUsage
     ): Long? {
         Log.d(LogService, "open popup for app ${app.packageName}")
+
         return suspendCancellableCoroutine { continuation ->
             openPopup(app.config, app) { duration ->
                 servicePopup.removeAll()
@@ -126,13 +131,18 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
                 }
 
                 // Resume the coroutine with the duration (which can be null)
+                app.popupDisplayed = false
+                HidePopup(app)
                 continuation.resume(duration)
             }
         }
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    override fun HidePopup() {
+    override fun HidePopup(app: AppUsage) {
+        app.popupDisplayed = false
+        app.timerDisplayed = false
+
         GlobalScope.launch(Dispatchers.Main) {
             servicePopup.removeAll()
         }
@@ -160,13 +170,15 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
                 })
         }
 
+        app.popupDisplayed = true
+        app.timerDisplayed = false
         GlobalScope.launch(Dispatchers.Main) {
             servicePopup.expand()
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
-    override fun AskDuration(
+    fun AskDuration(
         appConfig: AppConfig,
         app: AppUsage,
         callback: (duration: Long) -> Unit
@@ -184,7 +196,7 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
     }
 
     @RequiresApi(Build.VERSION_CODES.Q)
-    override fun AskTerminate(
+    fun AskTerminate(
         appConfig: AppConfig,
         app: AppUsage,
         callback: (duration: Long?) -> Unit

@@ -26,9 +26,6 @@ class uAppMonitoring(
     private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
     private var job: Job? = null;
 
-    var monitoring = AtomicReference<Boolean>(false)
-    var waiting = AtomicReference<Boolean>(false)
-
     fun MonitorRunningApp() {
 
         Log.d(LogService, "start coroutine")
@@ -38,26 +35,36 @@ class uAppMonitoring(
         }
 
         this.job = serviceScope.launch {
-            var popupDisplayed = false
-            var timerDisplayed = ""
+
+            var previousApp: AppUsage? = null
 
             while (true) {
-            var sleepTime = 5000L
+                val sleepTime = 5000L
 
                 val app = appUsageRepo.FindRunning()
                 Log.d(LogService, "app ${app.packageName} ${app.timer?.ElapseTime()?.div(1000)}")
 
-                if (!popupDisplayed && app.config.monitor) {
+                // Close previous on app change
+                if (previousApp?.packageName != app.packageName && previousApp?.config?.monitor == true && previousApp.HaveTimer()) {
+                    previousApp.timer!!.Pause()
+                    appUsageRepo.HidePopup(previousApp)
+                }
+                previousApp = app
+
+
+                if (app.config.monitor) {
+
+                    // Old timer still running, clean it.
                     if (app.timer?.Expired() == true) {
                         Log.d(LogService, "app ${app.packageName} expired")
                         app.timer = null
+                        appUsageRepo.HidePopup(app)
                     }
 
+                    // Have timer timeout
                     if (app.HaveTimer() && app.timer?.Timeout() == true) {
                         Log.d(LogService, "app ${app.packageName} expired")
-
                         app.timer!!.Pause()
-                        timerDisplayed = ""
 
                         val extendDuration = appUsageRepo.DisplayPopup(app)
                         if (extendDuration != null && extendDuration > 0L) {
@@ -65,74 +72,33 @@ class uAppMonitoring(
 
                             app.timer!!.Extends(extendDuration)
                             app.timer!!.Start()
+                            DisplayTimer(app)
                         } else {
                             Log.d(LogService, "app ${app.packageName} closed")
-                            //app.timer = null
                         }
-                        appUsageRepo.Save(app)
-                        appUsageRepo.HidePopup()
-                        continue
-                    }
-
-                    if (!app.HaveTimer()) {
+                    // App don't have timer yet
+                    } else if (!app.HaveTimer()) {
                         Log.d(LogService, "app ${app.packageName} init timer")
                         app.timer = Timer(app.config.defaultDuration.inWholeMilliseconds)
                         app.timer!!.Start()
-                        appUsageRepo.Save(app)
-                    }
-
-                    if (app.HaveTimer() && app.timer!!.IsPaused()) {
+                        DisplayTimer(app)
+                    // App has been resume
+                    } else if (app.HaveTimer() && app.timer!!.IsPaused()) {
                         Log.d(LogService, "app ${app.packageName} resume timer")
                         app.timer!!.Start()
-                        appUsageRepo.Save(app)
-                    }
-
-                    if (timerDisplayed != app.packageName) {
-                        appUsageRepo.HidePopup()
-                        appUsageRepo.DisplayTimer(app.timer!!, {
-                            popupDisplayed = true
-                            timerDisplayed = ""
-                            serviceScope.launch {
-                                Log.d(LogService, "app ${app.packageName} pause timer")
-
-                                app.timer!!.Pause()
-                                val extendDuration = appUsageRepo.DisplayPopup(app)
-                                if (extendDuration != null && extendDuration > 0L) {
-                                    Log.d(LogService, "app ${app.packageName} extends timer")
-                                    app.timer!!.Extends(extendDuration)
-                                }
-                                Log.d(LogService, "app ${app.packageName} resume timer")
-
-                                app.timer!!.Start()
-                                appUsageRepo.Save(app)
-                                popupDisplayed = false
-                                // Quick display timer in next loop
-                                sleepTime = 0L
-                            }
-                        })
-                        timerDisplayed = app.packageName
+                        DisplayTimer(app)
                     }
                 }
 
-
-                // Check all other app if they have any timer and pause
-                for (otherApps in appUsageRepo.ListWithTimer()) {
-                    if (otherApps.packageName != app.packageName) {
-                        otherApps.timer!!.Pause()
-                        appUsageRepo.Save(otherApps)
+                if (screenManagerRepo.IsDisabled()) {
+                    Log.d(
+                        LogService,
+                        "app ${app.packageName} pause timer because screen is disabled"
+                    )
+                    if (app.HaveTimer()) {
+                        app.timer!!.Pause()
+                        appUsageRepo.HidePopup(app)
                     }
-                }
-                if (!app.config.monitor) {
-                    appUsageRepo.HidePopup()
-                    timerDisplayed = ""
-                }
-
-                if (screenManagerRepo.IsDisabled() && app.HaveTimer()) {
-                    Log.d(LogService, "app ${app.packageName} pause timer because screen is disabled")
-
-                    app.timer!!.Pause()
-                    appUsageRepo.Save(app)
-                    appUsageRepo.HidePopup()
                     break
                 }
 
@@ -142,6 +108,23 @@ class uAppMonitoring(
             Log.d(LogService, "coroutine stopped")
         }
 
+    }
+
+    fun DisplayTimer(app: AppUsage) {
+        appUsageRepo.DisplayTimer(app, {
+            serviceScope.launch {
+                Log.d(LogService, "app ${app.packageName} pause timer")
+
+                app.timer!!.Pause()
+                val extendDuration = appUsageRepo.DisplayPopup(app)
+                if (extendDuration != null && extendDuration > 0L) {
+                    Log.d(LogService, "app ${app.packageName} extends timer")
+                    app.timer!!.Extends(extendDuration)
+                }
+                Log.d(LogService, "app ${app.packageName} resume timer")
+                app.timer!!.Start()
+            }
+        })
     }
 
 }
