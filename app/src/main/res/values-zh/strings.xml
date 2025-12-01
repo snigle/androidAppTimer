@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">AppTimer</string>
+    <string name="app_todays_usage">今日使用情况：</string>
+    <string name="app_settings">设置</string>
+    <string name="app_time_elapsed">已用时间</string>
+    <string name="app_total_time">总时间</string>
+    <string name="app_time_s_up">时间到！</string>
+    <string name="app_leave_app">离开 %1$s</string>
+    <string name="app_extend_for">延长：</string>
+    <string name="app_one_minute">1 分钟</string>
+    <string name="app_five_minutes">5 分钟</string>
+    <string name="app_fifteen_minutes">15 分钟</string>
+    <string name="app_thirty_minutes">30 分钟</string>
+    <string name="app_configure_limits">为此应用程序配置限制</string>
+    <string name="app_time_hours_unit">小时</string>
+    <string name="app_time_minutes_unit">分钟</string>
+    <string name="app_time_seconds_unit">秒</string>
+    <string name="app_icon_description">图标</string>
+</resources>

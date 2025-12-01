@@ -28,8 +28,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.github.snigle.apptimer.R
 import com.github.snigle.apptimer.domain.AppConfig
 import kotlin.time.Duration.Companion.minutes
 
@@ -99,7 +101,7 @@ fun Application(
             if (appIcon != null) {
                 Image(
                     bitmap = appIcon,
-                    contentDescription = "icon",
+                    contentDescription = stringResource(R.string.app_icon_description),
                     modifier = Modifier.size(48.dp)
                 )
             } else {

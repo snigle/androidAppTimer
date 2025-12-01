@@ -34,13 +34,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.github.snigle.apptimer.R
 import com.github.snigle.apptimer.domain.AppConfig
 import com.github.snigle.apptimer.domain.AppUsage
 import com.github.snigle.apptimer.domain.Timer
-import com.github.snigle.apptimer.domain.formatDurationInSeconds
 import com.github.snigle.apptimer.ui.theme.AppTimerTheme
 
 @Composable
@@ -94,7 +95,7 @@ fun PopupCompose(
                 // Daily usage top left
                 Column(modifier = Modifier.align(Alignment.TopStart)) {
                     Text(
-                        text = "Usage aujourd'hui:",
+                        text = stringResource(R.string.app_todays_usage),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -114,7 +115,7 @@ fun PopupCompose(
                     },
                     modifier = Modifier.align(Alignment.TopEnd)
                 ) {
-                    Icon(Icons.Default.Settings, contentDescription = "Settings")
+                    Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.app_settings))
                 }
 
                 Column(
@@ -142,8 +143,8 @@ fun PopupCompose(
                     ) {
                         val elapsedTime = (appUsage.timer?.ElapseTime() ?: 0) / 1000
                         val totalTime = (appUsage.timer?.duration ?: 0) / 1000
-                        InfoColumn(label = "Temps écoulé", value = formatDurationInSeconds(elapsedTime))
-                        InfoColumn(label = "Temps total", value = formatDurationInSeconds(totalTime))
+                        InfoColumn(label = stringResource(R.string.app_time_elapsed), value = formatDurationInSeconds(elapsedTime))
+                        InfoColumn(label = stringResource(R.string.app_total_time), value = formatDurationInSeconds(totalTime))
                     }
 
 
@@ -155,7 +156,7 @@ fun PopupCompose(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "Temps écoulé !",
+                                text = stringResource(R.string.app_time_s_up),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -164,7 +165,7 @@ fun PopupCompose(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                             ) {
-                                Text("Quitter $appLabel")
+                                Text(stringResource(R.string.app_leave_app, appLabel))
                             }
                         }
                     }
@@ -173,7 +174,7 @@ fun PopupCompose(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Text(
-                            text = "Prolonger de :",
+                            text = stringResource(R.string.app_extend_for),
                             style = MaterialTheme.typography.titleMedium
                         )
                         // Time extension buttons
@@ -181,10 +182,10 @@ fun PopupCompose(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
                         ) {
-                            ExtendButton(text = "1 min") { onSetTimer(1 * 60 * 1000) }
-                            ExtendButton(text = "5 min") { onSetTimer(5 * 60 * 1000) }
-                            ExtendButton(text = "15 min") { onSetTimer(15 * 60 * 1000) }
-                            ExtendButton(text = "30 min") { onSetTimer(30 * 60 * 1000) }
+                            ExtendButton(text = stringResource(R.string.app_one_minute)) { onSetTimer(1 * 60 * 1000) }
+                            ExtendButton(text = stringResource(R.string.app_five_minutes)) { onSetTimer(5 * 60 * 1000) }
+                            ExtendButton(text = stringResource(R.string.app_fifteen_minutes)) { onSetTimer(15 * 60 * 1000) }
+                            ExtendButton(text = stringResource(R.string.app_thirty_minutes)) { onSetTimer(30 * 60 * 1000) }
                         }
                     }
 
@@ -194,7 +195,7 @@ fun PopupCompose(
                             settingsIntent()
                             onSetTimer(null)
                         }) {
-                            Text("Configurer les limites pour cette application")
+                            Text(stringResource(R.string.app_configure_limits))
                         }
                     }
                 }

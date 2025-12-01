@@ -32,7 +32,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.github.snigle.apptimer.domain.Timer
-import com.github.snigle.apptimer.domain.formatDurationInSeconds
 import com.github.snigle.apptimer.ui.theme.AppTimerTheme
 import kotlinx.coroutines.delay
 

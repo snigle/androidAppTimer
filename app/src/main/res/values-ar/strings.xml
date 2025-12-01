@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">AppTimer</string>
+    <string name="app_todays_usage">استخدام اليوم:</string>
+    <string name="app_settings">إعدادات</string>
+    <string name="app_time_elapsed">الوقت المنقضي</string>
+    <string name="app_total_time">الوقت الكلي</string>
+    <string name="app_time_s_up">انتهى الوقت!</string>
+    <string name="app_leave_app">مغادرة %1$s</string>
+    <string name="app_extend_for">تمديد لمدة:</string>
+    <string name="app_one_minute">1 دقيقة</string>
+    <string name="app_five_minutes">5 دقائق</string>
+    <string name="app_fifteen_minutes">15 دقيقة</string>
+    <string name="app_thirty_minutes">30 دقيقة</string>
+    <string name="app_configure_limits">تكوين الحدود لهذا التطبيق</string>
+    <string name="app_time_hours_unit">س</string>
+    <string name="app_time_minutes_unit">د</string>
+    <string name="app_time_seconds_unit">ث</string>
+    <string name="app_icon_description">أيقونة</string>
+</resources>

@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">AppTimer</string>
+    <string name="app_todays_usage">Usage aujourd\'hui</string>
+    <string name="app_settings">Paramètres</string>
+    <string name="app_time_elapsed">Temps écoulé</string>
+    <string name="app_total_time">Temps total</string>
+    <string name="app_time_s_up">Temps écoulé</string>
+    <string name="app_leave_app">Quitter %1$s</string>
+    <string name="app_extend_for">Prolonger de</string>
+    <string name="app_one_minute">1 min</string>
+    <string name="app_five_minutes">5 min</string>
+    <string name="app_fifteen_minutes">15 min</string>
+    <string name="app_thirty_minutes">30 min</string>
+    <string name="app_configure_limits">Configurer les limites pour cette application</string>
+    <string name="app_time_hours_unit">h</string>
+    <string name="app_time_minutes_unit">m</string>
+    <string name="app_time_seconds_unit">s</string>
+    <string name="app_icon_description">icône</string>
+</resources>

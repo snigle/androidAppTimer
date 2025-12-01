@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">AppTimer</string>
+    <string name="app_todays_usage">Sử dụng hôm nay:</string>
+    <string name="app_settings">Cài đặt</string>
+    <string name="app_time_elapsed">Thời gian đã trôi qua</string>
+    <string name="app_total_time">Tổng thời gian</string>
+    <string name="app_time_s_up">Hết giờ!</string>
+    <string name="app_leave_app">Rời khỏi %1$s</string>
+    <string name="app_extend_for">Gia hạn thêm:</string>
+    <string name="app_one_minute">1 phút</string>
+    <string name="app_five_minutes">5 phút</string>
+    <string name="app_fifteen_minutes">15 phút</string>
+    <string name="app_thirty_minutes">30 phút</string>
+    <string name="app_configure_limits">Định cấu hình giới hạn cho ứng dụng này</string>
+    <string name="app_time_hours_unit">giờ</string>
+    <string name="app_time_minutes_unit">phút</string>
+    <string name="app_time_seconds_unit">giây</string>
+    <string name="app_icon_description">biểu tượng</string>
+</resources>
