@@ -12,69 +12,81 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 
 class AppMonitoring(
     private val appUsageRepo: IAppUsage,
-    private val screenManagerRepo: IScreenManager
+    private val screenManagerRepo: IScreenManager,
+    private val serviceScope: CoroutineScope
 ) {
 
-    private val serviceJob = SupervisorJob()
-    private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
+
     private var job: Job? = null;
 
-    fun MonitorRunningApp() {
+    private var previousApp: AppUsage? = null
 
-        Log.d(LogService, "start coroutine")
+    fun MonitorRunningApp(packageNameInput: String) {
+        var packageName = packageNameInput
+        if (packageName == "" && previousApp != null) {
+            packageName = previousApp!!.packageName
+        }
+
         if (job != null && job!!.isActive) {
-            Log.d(LogService, "coroutine already running")
+            if (previousApp?.packageName == packageName) {
+                return
+            }
+            Log.d(LogService, "terminate previous coroutine for app $previousApp")
+            job?.cancel(CancellationException("stop previous timer"))
+
+            if (previousApp != null && previousApp?.HaveTimer() == true) {
+                previousApp?.timer!!.Pause()
+                appUsageRepo.HidePopup(previousApp!!)
+                Log.d(LogService, "stop previous timer")
+            }
             return
         }
 
-        this.job = serviceScope.launch {
+        val app = appUsageRepo.Find(packageName)
+        previousApp = app
 
-            var previousApp: AppUsage? = null
+        if (app.config.monitor) {
+            Log.d(LogService, "start coroutine for app $app")
+            this.job = serviceScope.launch {
 
-            while (true) {
-                val sleepTime = 5000L
+                while (true) {
+                    val sleepTime = 1000L
 
-                val app = appUsageRepo.FindRunning()
-                Log.d(LogService, "app ${app.packageName} ${app.timer?.ElapseTime()?.div(1000)}")
-
-                // Wait if we wait user input from popup
-                if (app.popupDisplayed) {
-                    delay(sleepTime)
-                    continue
-                }
-
-                // Close previous on app change
-                if (previousApp?.packageName != app.packageName && previousApp?.config?.monitor == true && previousApp.HaveTimer()) {
-                    previousApp.timer!!.Pause()
-                    appUsageRepo.HidePopup(previousApp)
-                }
-                previousApp = app
-
-
-                if (app.config.monitor) {
-                    handleAppTimer(app)
-                }
-
-                // Auto pause and stop coroutine if screen is off.
-                // Coroutine will be restarted by the service on startup.
-                if (screenManagerRepo.IsDisabled()) {
                     Log.d(
                         LogService,
-                        "app ${app.packageName} pause timer because screen is disabled"
+                        "app ${app.packageName} ${
+                            app.timer?.ElapseTime()?.div(1000)
+                        } ${app.popupDisplayed} ${app.timerDisplayed}"
                     )
-                    if (app.HaveTimer()) {
-                        app.timer!!.Pause()
-                        appUsageRepo.HidePopup(app)
+
+                    if (app.popupDisplayed) {
+                        delay(sleepTime)
+                        continue
                     }
-                    break
+
+                    handleAppTimer(app)
+
+                    // Auto pause and stop coroutine if screen is off.
+                    // Coroutine will be restarted by the service on startup.
+                    if (screenManagerRepo.IsDisabled()) {
+                        Log.d(
+                            LogService,
+                            "app ${app.packageName} pause timer because screen is disabled"
+                        )
+                        if (app.HaveTimer()) {
+                            app.timer!!.Pause()
+                            appUsageRepo.HidePopup(app)
+                        }
+                        break
+                    }
+
+                    delay(sleepTime) // Main delay to reduce battery consumption
                 }
-
-                delay(sleepTime) // Main delay to reduce battery consumption
             }
-
             Log.d(LogService, "coroutine stopped")
         }
 
@@ -91,8 +103,7 @@ class AppMonitoring(
                     Log.d(LogService, "app ${app.packageName} extends timer")
                     app.timer!!.Extends(extendDuration)
                 }
-                Log.d(LogService, "app ${app.packageName} resume timer")
-                app.timer!!.Start()
+                //Log.d(LogService, "app ${app.packageName} resume timer")
             }
         })
     }
@@ -115,7 +126,6 @@ class AppMonitoring(
                 Log.d(LogService, "app ${app.packageName} extends")
 
                 app.timer!!.Extends(extendDuration)
-                app.timer!!.Start()
                 displayTimer(app)
             } else {
                 Log.d(LogService, "app ${app.packageName} closed")
@@ -129,6 +139,10 @@ class AppMonitoring(
             // App has been resume
         } else if (app.HaveTimer() && app.timer!!.IsPaused()) {
             Log.d(LogService, "app ${app.packageName} resume timer")
+            app.timer!!.Start()
+            displayTimer(app)
+        } else if (app.HaveTimer() && !app.timerDisplayed) {
+            Log.d(LogService, "app ${app.packageName} display timer")
             app.timer!!.Start()
             displayTimer(app)
         }

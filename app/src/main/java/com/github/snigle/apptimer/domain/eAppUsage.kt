@@ -9,6 +9,8 @@ import java.util.Locale
 interface IAppUsage {
     fun FindRunning(): AppUsage
 
+    fun Find(packageName: String): AppUsage
+
     fun ListWithTimer(): ArrayList<AppUsage>
 
     fun DisplayTimer(app: AppUsage, onclick: () -> Unit)

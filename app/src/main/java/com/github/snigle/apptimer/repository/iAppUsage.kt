@@ -35,6 +35,10 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
     @RequiresApi(Build.VERSION_CODES.Q)
     override fun FindRunning(): AppUsage {
         val packageName = getLastStartedApp(servicePopup)
+        return Find(packageName)
+    }
+
+    override fun Find(packageName: String): AppUsage {
         if (packageName == "") {
             return AppUsage("", AppConfig("", "", false), null)
         }
@@ -97,7 +101,8 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
 
         app.timerDisplayed = true
         app.popupDisplayed = false
-        GlobalScope.launch(Dispatchers.Main) {
+        servicePopup.serviceScope.launch(Dispatchers.Main) {
+            Log.d(LogService, "expand timer")
             servicePopup.minimize()
         }
     }
@@ -132,6 +137,7 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
 
                 // Resume the coroutine with the duration (which can be null)
                 app.popupDisplayed = false
+                app.timerDisplayed = false
                 HidePopup(app)
                 continuation.resume(duration)
             }
@@ -143,7 +149,7 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
         app.popupDisplayed = false
         app.timerDisplayed = false
 
-        GlobalScope.launch(Dispatchers.Main) {
+        servicePopup.serviceScope.launch(Dispatchers.Main) {
             servicePopup.removeAll()
         }
     }
@@ -172,7 +178,7 @@ class AppUsageRepo(private val servicePopup: ServicePopup, private val localStor
 
         app.popupDisplayed = true
         app.timerDisplayed = false
-        GlobalScope.launch(Dispatchers.Main) {
+        servicePopup.serviceScope.launch(Dispatchers.Main) {
             servicePopup.expand()
         }
     }

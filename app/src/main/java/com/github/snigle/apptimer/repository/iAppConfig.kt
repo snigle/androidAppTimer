@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.content.pm.ResolveInfo
 import com.github.snigle.apptimer.domain.AppConfig
 import com.github.snigle.apptimer.domain.IAppConfig
+import kotlinx.coroutines.CoroutineScope
 
 class AppConfigRepo(val preferences: SharedPreferences, val packageManager: PackageManager):
     IAppConfig {

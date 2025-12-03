@@ -1,5 +1,6 @@
 package com.github.snigle.apptimer
 
+import android.content.Intent
 import android.view.KeyEvent
 import androidx.compose.runtime.Composable
 import androidx.preference.PreferenceManager
@@ -14,10 +15,22 @@ import com.torrydo.floatingbubbleview.FloatingBubbleListener
 import com.torrydo.floatingbubbleview.service.expandable.BubbleBuilder
 import com.torrydo.floatingbubbleview.service.expandable.ExpandableBubbleService
 import com.torrydo.floatingbubbleview.service.expandable.ExpandedBubbleBuilder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 
 val LogService = "apptimer.popup"
 
 class ServicePopup : ExpandableBubbleService() {
+
+    companion object {
+        const val ACTION_APP_CHANGED = "ACTION_APP_CHANGED"
+        const val EXTRA_PACKAGE_NAME = "EXTRA_PACKAGE_NAME"
+    }
+    private val serviceJob = SupervisorJob()
+    val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
+    val usecaseScope = CoroutineScope(Dispatchers.Main + serviceJob)
 
     var timerComponent: @Composable () -> Unit = {}
     var timerSettingComponent: @Composable () -> Unit = {}
@@ -113,19 +126,34 @@ class ServicePopup : ExpandableBubbleService() {
         )
         usecase = AppMonitoring(
                 AppUsageRepo(servicePopup = this@ServicePopup, this@ServicePopup.localStorage, configRepo),
-        ScreenManagerRepo(
-            this@ServicePopup.screenStateReceiver),
+        ScreenManagerRepo(            this@ServicePopup.screenStateReceiver), usecaseScope
+
         )
 
-        usecase.MonitorRunningApp()
-        screenStateReceiver.RegisterReceiver { usecase.MonitorRunningApp() }
+//        usecase.MonitorRunningApp()
+        screenStateReceiver.RegisterReceiver {  }
 
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        intent?.let {
+            if (it.action == ACTION_APP_CHANGED) {
+                val packageName = it.getStringExtra(EXTRA_PACKAGE_NAME)
+                if (packageName != null) {
+                    android.util.Log.d("ServicePopup", "Received app change to: $packageName")
+                    usecase.MonitorRunningApp(packageName)
+                }
+            }
+        }
+        return super.onStartCommand(intent, flags, startId)
     }
 
 
     override fun onDestroy() {
         super.onDestroy()
         screenStateReceiver.Destroy()
+        serviceScope.cancel()
+        usecaseScope.cancel()
     }
 
 
