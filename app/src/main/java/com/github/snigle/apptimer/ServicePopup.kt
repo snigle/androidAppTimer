@@ -130,8 +130,9 @@ class ServicePopup : ExpandableBubbleService() {
 
         )
 
-//        usecase.MonitorRunningApp()
-        screenStateReceiver.RegisterReceiver {  }
+        screenStateReceiver.RegisterReceiver {
+            usecase.MonitorRunningApp("")
+        }
 
     }
 

@@ -30,6 +30,9 @@ class AppMonitoring(
         if (packageName == "" && previousApp != null) {
             packageName = previousApp!!.packageName
         }
+        if (packageName == "") {
+            return
+        }
 
         if (job != null && job!!.isActive) {
             if (previousApp?.packageName == packageName) {
