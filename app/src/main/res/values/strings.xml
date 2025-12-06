@@ -16,4 +16,5 @@
     <string name="app_time_minutes_unit">m</string>
     <string name="app_time_seconds_unit">s</string>
     <string name="app_icon_description">icon</string>
+    <string name="accessibility_service_description">AppTimer needs to be able to see when you switch apps to enforce your usage limits.</string>
 </resources>

@@ -1,6 +1,7 @@
 package com.github.snigle.apptimer
 
 import android.app.AppOpsManager
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -94,14 +95,28 @@ class MainActivity : ComponentActivity() {
         val mode = appOps.unsafeCheckOpNoThrow(
             AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), packageName
         )
-        return mode == AppOpsManager.MODE_ALLOWED
+        if (mode != AppOpsManager.MODE_ALLOWED) {
+            return false
+        }
+        return isAccessibilityServiceEnabled()
     }
+
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        val expectedComponentName = ComponentName(this, AppChangeEventService::class.java)
+        val enabledServices = Settings.Secure.getString(contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+
+        return enabledServices?.split(':')?.any {
+            ComponentName.unflattenFromString(it) == expectedComponentName
+        } ?: false
+    }
+
 
     fun askPermissions() {
         if (!Settings.canDrawOverlays(this)) {
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
             intent.data = Uri.parse("package:$packageName")
             startActivity(intent)
+            return
         }
 
         val appOps = getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
@@ -110,6 +125,12 @@ class MainActivity : ComponentActivity() {
         )
         if (mode != AppOpsManager.MODE_ALLOWED) {
             val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            startActivity(intent)
+            return
+        }
+
+        if (!isAccessibilityServiceEnabled()) {
+            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
             startActivity(intent)
         }
 
@@ -124,6 +145,3 @@ class MainActivity : ComponentActivity() {
 
 
 }
-
-
-
